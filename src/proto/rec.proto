@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ratus_rec;
+package predictionmarkets_rec;
 
 option cc_generic_services = true;
 

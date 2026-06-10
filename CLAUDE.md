@@ -1,8 +1,8 @@
-# ratus-rec 项目说明
+# predictionmarkets_rec 项目说明
 
 ## 一、项目目标
 
-基于消息推荐场景的轻量级推荐服务。早期优化目标为用户停留时长（而非 CTR），后续逐步引入其他互动行为，向多任务优化演进。设计原则：快速上线、稳定运行、低成本维护，不引入复杂模块。
+基于网页 feed 场景的轻量级推荐服务。优化目标为点击率（CTR），后续逐步引入其他互动行为，向多任务优化演进。设计原则：快速上线、稳定运行、低成本维护，不引入复杂模块。
 
 ---
 
@@ -37,9 +37,6 @@ src/
 ├── rec/            # 推荐主流程（recall、feature、rank、rerank、filter、context）
 ├── server/         # brpc 服务入口
 └── proto/          # Protobuf 协议定义
-offline/
-├── feature/        # 离线特征生成脚本
-└── model/          # 离线模型训练与评估脚本
 conf/
 ├── config.conf     # 服务配置
 └── exp.conf        # 实验分组配置（本地部分）
@@ -71,7 +68,7 @@ fill_response(ctx)   # 序列化返回结果
 | `follow_u2i` | U2I | 关注用户发布内容召回 |
 | `recent_u2i` | U2I | 近期浏览作者发布内容召回 |
 
-I2I 通道以用户历史有效观看（`effective_sec >= 120`）的 item 为 trigger。
+I2I 通道以用户历史有点击行为的 item 为 trigger。
 
 召回阶段批量拉取 Redis，`idx_mapping` 做 key 去重，每路通道维护独立的 `parse_idx` 切片（`channel_parse_idx[i]`）。
 
@@ -116,7 +113,7 @@ LR 模型，Sigmoid 输出分数。模型文件二进制格式：`hash_size (int
 | Key | 说明 |
 |-----|------|
 | `user_black:{user_id}` | 用户黑名单（set） |
-| `user_history:{user_id}` | 用户曝光历史（list，JSON，含 `item_id`、`effective_sec`） |
+| `user_history:{user_id}` | 用户曝光历史（list，JSON，含 `item_id`、`clicked`） |
 | `user_followed:{user_id}` | 用户关注列表（list） |
 | `user_published:{user_id}` | 用户（作者）发布内容（list） |
 
@@ -126,7 +123,7 @@ LR 模型，Sigmoid 输出分数。模型文件二进制格式：`hash_size (int
 
 ## 七、实验分组
 
-用户按 `MD5(user_id + "_ratus") % 10` 分为 10 组（group_0 ~ group_9）。
+用户按 `MD5(user_id + "_predictionmarkets") % 10` 分为 10 组（group_0 ~ group_9）。
 
 实验配置两层合并：`base`（全量默认）→ `group_X`（分组覆盖）。本地 `conf/exp.conf` 与 Redis 中的远端配置合并，远端优先级更高。
 
@@ -162,7 +159,7 @@ LR 模型，Sigmoid 输出分数。模型文件二进制格式：`hash_size (int
 - 引用/指针符号靠近类型：`Context& ctx`，`int* p`
 - 命名：变量/函数 snake_case，类/结构体 PascalCase，常量 UPPER_SNAKE_CASE
 - 类型别名统一用 `using`
-- namespace 结束注释：`} // namespace ratus_rec`
+- namespace 结束注释：`} // namespace predictionmarkets_rec`
 - include 顺序：标准库 `<>` → 三方库 `<>` → 项目头文件 `""`
 - 重量级模块（config、context、召回通道配置）的并列字段做列对齐
 
@@ -173,7 +170,7 @@ Linux 环境，依赖 brpc、Protobuf、OpenSSL、curl。
 bash build.sh
 ```
 
-输出二进制：`./ratus_rec`，配置文件目录：`./conf/`。
+输出二进制：`./predictionmarkets_rec`，配置文件目录：`./conf/`。
 
 ---
 
@@ -181,7 +178,7 @@ bash build.sh
 
 ### 背景
 
-早期数据量不足以训练特征与排序模型，使用汤普森采样完成冷启动阶段的探索与利用。
+产品优化目标为点击率。早期数据量不足以训练特征与排序模型，使用汤普森采样以点击事件为 reward 完成冷启动阶段的探索与利用。
 
 ### 算法：汤普森采样
 

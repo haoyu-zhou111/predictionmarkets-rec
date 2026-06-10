@@ -1,15 +1,32 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "user_feature.h"
 #include "common/config.h"
 #include "common/log.h"
 #include "model.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 UserFeatureData g_user_feature;
+
+bool user_feature_init() {
+    try {
+        while (true) {
+            if (user_feature_load()) {
+                ALOG(INFO, "user_feature init successfully");
+                return true;
+            }
+            ALOG(ERROR, "user_feature init failed, retry after 1s");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "user_feature init fatal error: %s", e.what());
+        return false;
+    }
+}
 
 bool user_feature_load() {
     const std::string& file_path = g_config.data_path.user_feature;
@@ -48,10 +65,8 @@ bool user_feature_load() {
             const char* v_start = p;
             while (p < end && *p != ';') p++;
             std::string_view val_str(v_start, p - v_start);
-            try {
-                feature_map[std::string(key)] = std::string(val_str);
-            } catch (...) {}
-            
+            feature_map[std::string(key)] = std::string(val_str);
+
             if (p < end && *p == ';') p++;
         }
     }
@@ -60,4 +75,4 @@ bool user_feature_load() {
     return true;
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

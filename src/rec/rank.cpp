@@ -1,7 +1,7 @@
 #include "rank.h"
-#include "../data/model.h"
+#include "data/model.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
@@ -20,4 +20,4 @@ void rank(Context& ctx) {
 
 } // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

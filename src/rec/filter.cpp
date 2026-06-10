@@ -1,7 +1,7 @@
 #include "filter.h"
 #include "common/log.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
@@ -24,6 +24,6 @@ bool check_item(Context& ctx, const ItemId& item_id) {
     return true;
 }
 
-} // namespace
+} // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

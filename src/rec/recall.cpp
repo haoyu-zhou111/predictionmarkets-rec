@@ -1,11 +1,11 @@
 #include "recall.h"
 #include "filter.h"
-#include "../common/log.h"
-#include "../common/config.h"
-#include "../common/redis.h"
-#include "../data/i2i_index.h"
+#include "common/log.h"
+#include "common/config.h"
+#include "common/redis.h"
+#include "data/i2i_index.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
@@ -32,13 +32,13 @@ bool add_candidate(Context& ctx, const ItemId& item, const std::string& channel)
 
 template <typename Trigger, typename IndexMap>
 void trigger_index_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf, const std::vector<Trigger>& triggers, const IndexMap& index_map) {
-    int tot = 0;
+    uint32_t tot = 0;
     for (auto& trigger : triggers) {
         const auto item_vec_iter = index_map.find(trigger);
         if (item_vec_iter == index_map.end()) {
             continue;
         }
-        int single = 0;
+        uint32_t single = 0;
         for (auto& item : item_vec_iter->second) {
             if (add_candidate(ctx, item, channel)) {
                 single++;
@@ -62,7 +62,7 @@ void i2i_recall(Context& ctx, const std::string& channel, const RecallChannelCon
     }
 
     const auto& index = index_iter->second;
-    trigger_index_recall(ctx, channel, conf, ctx.view_list, index);
+    trigger_index_recall(ctx, channel, conf, ctx.click_list, index);
 }
 
 void cate_hot_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
@@ -164,7 +164,7 @@ void follow_u2i_parse(Context& ctx, const std::string& channel, brpc::RedisRespo
 
         try {
             ctx.follow_u2i_items_map[t] = redis::parse<std::vector<std::string>>(resp.reply(parse_idx[i]));
-        } catch (const std::exception &e) {
+        } catch (const std::exception& e) {
             ALOG(ERROR, "parse user %s published item list failed: %s", t.c_str(), e.what());
         }
     }
@@ -176,7 +176,7 @@ void recent_u2i_parse(Context& ctx, const std::string& channel, brpc::RedisRespo
 
         try {
             ctx.recent_u2i_items_map[t] = redis::parse<std::vector<std::string>>(resp.reply(parse_idx[i]));
-        } catch (const std::exception &e) {
+        } catch (const std::exception& e) {
             ALOG(ERROR, "parse user %s published item list failed: %s", t.c_str(), e.what());
         }
     }
@@ -240,14 +240,18 @@ void recall(Context& ctx) {
         }
     }
 
-    brpc::RedisResponse resp;
-    redis::get(redis_cmds, redis_keys, resp);
+    if (redis_cmds.empty()) {
+        ALOG(INFO, "no redis recall cmds, skip redis fetch and parse");
+    } else {
+        brpc::RedisResponse resp;
+        redis::get(redis_cmds, redis_keys, resp);
 
-    for (size_t i = 0; i < recalls.size(); i++) {
-        auto& [channel, recall_func, prepare_func, parse_func] = recalls[i];
-        auto conf_iter = recall_config.find(channel);
-        if (conf_iter != recall_config.end() && conf_iter->second.enable && parse_func != nullptr) {
-            parse_func(ctx, channel, resp, channel_parse_idx[i]);
+        for (size_t i = 0; i < recalls.size(); i++) {
+            auto& [channel, recall_func, prepare_func, parse_func] = recalls[i];
+            auto conf_iter = recall_config.find(channel);
+            if (conf_iter != recall_config.end() && conf_iter->second.enable && parse_func != nullptr) {
+                parse_func(ctx, channel, resp, channel_parse_idx[i]);
+            }
         }
     }
 
@@ -264,4 +268,4 @@ void recall(Context& ctx) {
 
 } // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

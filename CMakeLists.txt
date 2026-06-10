@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(ratus_rec)
+project(predictionmarkets_rec)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,7 +48,7 @@ file(GLOB_RECURSE SRC_FILES
     main.cpp
 )
 
-add_executable(ratus_rec
+add_executable(predictionmarkets_rec
     ${SRC_FILES}
     ${PROTO_SRCS}
     ${PROTO_HDRS}
@@ -57,7 +57,7 @@ add_executable(ratus_rec
 include_directories(${CURL_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
-target_link_libraries(ratus_rec
+target_link_libraries(predictionmarkets_rec
     brpc
     gflags
     ${PROTOBUF_LIBRARIES}

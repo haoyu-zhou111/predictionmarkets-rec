@@ -31,6 +31,15 @@ inline const nlohmann::json& get_json_obj(const nlohmann::json& j, const std::st
     return empty_obj;
 }
 
+inline const nlohmann::json& get_json_arr(const nlohmann::json& j, const std::string& key) {
+    static const nlohmann::json empty_arr = nlohmann::json::array();
+    if (j.contains(key) && j[key].is_array()) {
+        return j[key];
+    }
+    ALOG(WARNING, "json array not found: %s, use empty array", key.c_str());
+    return empty_arr;
+}
+
 inline void json_merge(nlohmann::json& target, const nlohmann::json& delta) {
     std::stack<std::pair<nlohmann::json*, const nlohmann::json*>> st;
     st.emplace(&target, &delta);
@@ -78,7 +87,7 @@ std::vector<T> sample(const std::vector<T>& vec, size_t count) {
     return tmp;
 }
 
-inline uint32_t feature_hash(const std::string& key, int hash_size) {
+inline uint32_t feature_hash(const std::string& key, uint32_t hash_size) {
     uint64_t out[2];
     MurmurHash3_x64_128(key.data(), (int)key.size(), 0, out);
     uint64_t mask = (1ULL << hash_size) - 1;

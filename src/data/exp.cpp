@@ -9,13 +9,13 @@
 #include "common/log.h"
 #include "common/redis.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 std::shared_ptr<const ExpConfigData>    g_exp_merged_config;
 
 namespace {
 
-const std::string SALT = "_ratus";
+const std::string SALT = "_predictionmarkets";
 
 json exp_local_base;
 json exp_local_groups;    
@@ -24,10 +24,10 @@ void parse_config(const json& config_json, ExpConfig& exp_config) {
     auto& recall_config = get_json_obj(config_json, "recall");
     try {
         for (auto& [channel, config] : recall_config.items()) {
-            bool enable = get_json(config, "enable", false);
-            int trigger_count = get_json(config, "trigger_count", 0);
-            int single_topk = get_json(config, "single_topk", 0);
-            int topk = get_json(config, "topk", 0);
+            bool     enable        = get_json(config, "enable",        false);
+            uint32_t trigger_count = get_json(config, "trigger_count", 0u);
+            uint32_t single_topk   = get_json(config, "single_topk",   0u);
+            uint32_t topk          = get_json(config, "topk",          0u);
             exp_config.recall.channel_config.emplace(channel, RecallChannelConfig{
                 enable,
                 trigger_count,
@@ -53,10 +53,10 @@ void parse_config(const json& config_json, ExpConfig& exp_config) {
     auto& op_config = get_json_obj(config_json, "op");
     try {
         exp_config.op.enable = get_json(op_config, "enable", false);
-        for (auto& p : get_json_obj(op_config, "positions")) {
+        for (auto& p : get_json_arr(op_config, "positions")) {
             exp_config.op.positions.emplace_back(p);
         }
-        for (auto& item : get_json_obj(op_config, "items")) {
+        for (auto& item : get_json_arr(op_config, "items")) {
             exp_config.op.items.emplace_back(static_cast<std::string>(item));
         }
     } catch (const std::exception& e) {
@@ -85,7 +85,7 @@ bool load_local_config() {
 
         exp_local_base = get_json_obj(j, "base");
 
-        for (int i = 0; i < 10; ++i) {
+        for (uint32_t i = 0; i < 10; ++i) {
             std::string group_key = "group_" + std::to_string(i);
             exp_local_groups[i] = get_json_obj(j, group_key);
         }
@@ -99,7 +99,6 @@ bool load_local_config() {
 }
 
 bool merge_redis_config() {
-    std::string json_str;
     brpc::RedisResponse resp;
 
     bool ret = redis::get({"GET"}, {g_config.exp.redis_key}, resp);
@@ -118,7 +117,7 @@ bool merge_redis_config() {
 
         ExpConfigData exp_final;
 
-        for (int i = 0; i < 10; ++i) {
+        for (uint32_t i = 0; i < 10; ++i) {
             json final_json = merged;
             json_merge(final_json, exp_local_groups[i]);
 
@@ -132,7 +131,7 @@ bool merge_redis_config() {
         ALOG(INFO, "load redis exp config success");
         std::atomic_store(&g_exp_merged_config, std::make_shared<const ExpConfigData>(exp_final));
         return true;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         ALOG(ERROR, "parse exp config failed: %s", e.what());
         return false;
     }
@@ -182,11 +181,11 @@ uint32_t get_user_group(UserId user_id) {
     MD5((const unsigned char*)key.data(), key.size(), md5);
 
     uint64_t h = 0;
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         h = (h << 8) | md5[i];
     }
 
     return (uint32_t)(llabs((int64_t)h) % 10);
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

@@ -1,8 +1,12 @@
 #pragma once
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 #include <brpc/redis.h>
 #include <brpc/channel.h>
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace redis {
 
@@ -26,7 +30,7 @@ template<>
 inline std::vector<std::string> parse<std::vector<std::string>>(const brpc::RedisReply& r) {
     std::vector<std::string> res;
     if (r.is_array()) {
-        for (uint32_t i = 0; i < r.size(); ++i) {
+        for (size_t i = 0; i < r.size(); ++i) {
             res.push_back(std::string(r[i].data()));
         }
     }
@@ -38,7 +42,7 @@ template<>
 inline std::unordered_set<std::string> parse<std::unordered_set<std::string>>(const brpc::RedisReply& r) {
     std::unordered_set<std::string> res;
     if (r.is_array()) {
-        for (uint32_t i = 0; i < r.size(); ++i) {
+        for (size_t i = 0; i < r.size(); ++i) {
             res.insert(std::string(r[i].data()));
         }
     }
@@ -48,4 +52,4 @@ inline std::unordered_set<std::string> parse<std::unordered_set<std::string>>(co
 
 } // namespace redis
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

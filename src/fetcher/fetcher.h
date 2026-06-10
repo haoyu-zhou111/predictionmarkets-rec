@@ -2,7 +2,7 @@
 
 #include "rec/context.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace fetcher {
 
@@ -12,4 +12,4 @@ void fetch_user_context(Context& ctx);
 
 } // namespace fetcher
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

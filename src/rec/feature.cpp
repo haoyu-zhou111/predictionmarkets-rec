@@ -1,11 +1,11 @@
 #include "feature.h"
 #include "context.h"
 #include "recall.h"
-#include "../data/model.h"
-#include "../data/feature_manifest.h"
-#include "../common/utils.h"
+#include "data/model.h"
+#include "data/feature_manifest.h"
+#include "common/utils.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
@@ -63,10 +63,11 @@ void generate_pair(
 void feature_combine(Context& ctx) {
     ctx.feature_idx.resize(ctx.candidates.size());
     ctx.behavior_feature_vec.resize(ctx.candidates.size());
+
+    auto user_feature_iter = g_user_feature.find(ctx.user_id);
     for (size_t i = 0; i < ctx.candidates.size(); ++i) {
         auto& idx_vec = ctx.feature_idx[i];
-        
-        auto user_feature_iter = g_user_feature.find(ctx.user_id);
+
         if (user_feature_iter != g_user_feature.end()) {
             generate_single(g_feature_manifest.user_fea, user_feature_iter->second, idx_vec);
         }
@@ -85,7 +86,7 @@ void feature_combine(Context& ctx) {
         generate_single(g_feature_manifest.context_fea, ctx.context_feature_map, idx_vec);
 
         uint32_t channel_binary = ctx.channels[ctx.candidates[i]];
-        for (uint32_t c = 0; c <= MAX_CHANNEL_TYPE; c++) {
+        for (uint32_t c = 0; c < CHANNEL_TYPE_COUNT; c++) {
             std::string key = "channel_" + std::to_string(c);
             if (channel_binary & (1 << c)) {
                 ctx.behavior_feature_vec[i][key] = "1";
@@ -116,4 +117,4 @@ void feature_combine(Context& ctx) {
 
 } // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

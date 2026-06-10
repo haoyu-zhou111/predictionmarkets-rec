@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include "common/type_define.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct ItemPoolData {
     std::unordered_set<ItemId> item_set;
@@ -16,4 +16,4 @@ bool item_pool_init();
 
 bool item_pool_load();
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

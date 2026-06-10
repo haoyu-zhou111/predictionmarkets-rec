@@ -4,7 +4,7 @@
 #include "common/log.h"
 #include "common/utils.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct ServerConf {
     int port       = 8080;
@@ -36,7 +36,7 @@ struct DataPathConf {
 };
 
 struct ModelPathConf {
-    std::string ranking = "./data/lr_model";
+    std::string ranking = "./data/model/lr_model";
 };
 
 struct LogConf {
@@ -74,4 +74,4 @@ extern Config g_config;
 
 bool config_load(const std::string& path);
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

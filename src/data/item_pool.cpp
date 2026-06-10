@@ -8,7 +8,7 @@
 #include "common/config.h"
 #include "common/log.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 using json = nlohmann::json;
 
@@ -60,7 +60,7 @@ std::shared_ptr<ItemPoolData> try_load_item_pool() {
     return data;
 }
 
-} // anonymous namespace
+} // namespace
 
 bool item_pool_load() {
     try {
@@ -98,4 +98,4 @@ bool item_pool_init() {
     }
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

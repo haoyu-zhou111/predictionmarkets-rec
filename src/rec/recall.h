@@ -1,14 +1,14 @@
 #pragma once
 
 #include "context.h"
-#include "../common/type_define.h"
+#include "common/type_define.h"
 #include <unordered_map>
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
-const uint32_t MAX_CHANNEL_TYPE = 3;
+const uint32_t CHANNEL_TYPE_COUNT = 4;
 
 const std::unordered_map<std::string, uint32_t> CHANNEL = {
     {"global_hot",   0},
@@ -28,4 +28,4 @@ void recall(Context& ctx);
 
 } // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

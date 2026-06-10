@@ -3,13 +3,13 @@
 #include <memory>
 #include "common/type_define.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct RecallChannelConfig {
-    bool    enable          = false;
-    int     trigger_count   = 0;
-    int     single_topk     = 0;
-    int     topk            = 0;
+    bool        enable          = false;
+    uint32_t    trigger_count   = 0;
+    uint32_t    single_topk     = 0;
+    uint32_t    topk            = 0;
 };
 
 struct RecallConfig {
@@ -50,4 +50,4 @@ void exp_config_reload();
 
 uint32_t get_user_group(UserId user_id);
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

@@ -6,7 +6,7 @@
 #include "recall.h"
 #include "rerank.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 namespace rec {
 
 using json = nlohmann::json;
@@ -46,7 +46,15 @@ json recommend(Context& ctx) {
             {"code", 500},
             {"message", "item pool not ready"},
             {"request_id", ctx.request_id},
-            {"timestamp", ctx.timestamp}
+            {"timestamp", ctx.timestamp},
+            {"data", {
+                {"current_refresh_num", ctx.session_refresh_num},
+                {"feed_list", json::array()},
+                {"ext_info", {
+                    {"has_more", true},
+                    {"strategy", "base"}
+                }}
+            }}
         };
     }
 
@@ -58,4 +66,4 @@ json recommend(Context& ctx) {
 }
 
 } // namespace rec
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

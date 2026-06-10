@@ -2,24 +2,24 @@
 
 #include <vector>
 #include <memory>
-#include "../data/item_pool.h"
-#include "../data/item_feature.h"
-#include "../data/user_feature.h"
-#include "../data/exp.h"
+#include "data/item_pool.h"
+#include "data/item_feature.h"
+#include "data/user_feature.h"
+#include "data/exp.h"
 #include "rec.pb.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct Context {
     std::string                                                 user_id;
-    uint32_t                                                    group_id;
-    uint64_t                                                    timestamp;
+    uint32_t                                                    group_id            = 0;
+    uint64_t                                                    timestamp           = 0;
     std::string                                                 request_id;
     std::string                                                 session_id;
-    uint32_t                                                    session_refresh_num;
-    uint32_t                                                    topk;
+    uint32_t                                                    session_refresh_num = 0;
+    uint32_t                                                    topk                = 10;
     std::vector<LastRefreshItem>                                last_refresh_items;
-    bool                                                        has_more;   
+    bool                                                        has_more            = true;
 
 
     std::shared_ptr<const ItemPoolData>                         item_pool;
@@ -30,7 +30,7 @@ struct Context {
     std::unordered_set<ItemId>                                  blacklist_set;
     std::unordered_set<ItemId>                                  show_set;
     std::vector<ItemId>                                         show_list;
-    std::vector<ItemId>                                         view_list;
+    std::vector<ItemId>                                         click_list;
     std::vector<UserId>                                         followed_list;
 
     std::unordered_map<std::string, std::string>                context_feature_map;
@@ -52,49 +52,6 @@ struct Context {
     std::vector<double>                                         rank_scores;
 
     std::vector<std::pair<ItemId, uint32_t>>                    final_results;
-
-    void reset() {
-        user_id                 = "";
-        timestamp               = 0;
-        request_id              = "";
-        session_id              = "";
-        session_refresh_num     = 0;
-        topk                    = 10;
-        has_more                = true;
-
-        item_pool               = nullptr;
-        item_feature            = nullptr;
-        exp_config              = nullptr;
-
-        last_refresh_items.clear();
-        blacklist_set.clear();
-        show_set.clear();
-        show_list.clear();
-        view_list.clear();
-        followed_list.clear();
-
-        context_feature_map.clear();
-        
-        recent_cates_freq.clear();
-        recent_cates_vec.clear();
-        recent_authors_freq.clear();
-        recent_authors_vec.clear();
-
-        follow_u2i_triggers.clear();
-        recent_u2i_triggers.clear();
-        follow_u2i_items_map.clear();
-        recent_u2i_items_map.clear();
-
-        candidates.clear();
-        channels.clear();
-        behavior_feature_vec.clear();
-        feature_idx.clear();
-        rank_scores.clear();
-
-        final_results.clear();
-    }
-
-
 };
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

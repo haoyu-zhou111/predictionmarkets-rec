@@ -4,7 +4,7 @@
 
 using json = nlohmann::json;
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 Config g_config;
 
@@ -73,4 +73,4 @@ bool config_load(const std::string& conf_path) {
     return true;
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

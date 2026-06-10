@@ -1,11 +1,12 @@
 #include <fstream>
+#include <thread>
 
 #include "feature_manifest.h"
 #include "common/config.h"
 #include "common/log.h"
 #include "common/type_define.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 FeatureManifest g_feature_manifest;
 
@@ -33,6 +34,22 @@ void parse_pair(const json& json_manifest, std::vector<std::pair<std::string, st
 
 } // namespace
 
+bool feature_manifest_init() {
+    try {
+        while (true) {
+            if (feature_manifest_load()) {
+                ALOG(INFO, "feature_manifest init successfully");
+                return true;
+            }
+            ALOG(ERROR, "feature_manifest init failed, retry after 1s");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "feature_manifest init fatal error: %s", e.what());
+        return false;
+    }
+}
+
 bool feature_manifest_load() {
     const std::string& file_path = g_config.data_path.feature_manifest;
     std::ifstream ifs(file_path);
@@ -46,12 +63,12 @@ bool feature_manifest_load() {
         json j;
         ifs >> j;
         
-        parse_single(get_json_obj(j, "user"), g_feature_manifest.user_fea);
-        parse_single(get_json_obj(j, "item"), g_feature_manifest.item_fea);
-        parse_single(get_json_obj(j, "context"), g_feature_manifest.context_fea);
-        parse_pair(get_json_obj(j, "ui_cross"), g_feature_manifest.ui_cross_fea);
-        parse_pair(get_json_obj(j, "ii_cross"), g_feature_manifest.ii_cross_fea);
-        parse_single(get_json_obj(j, "behavior"), g_feature_manifest.behavior_fea);
+        parse_single(get_json_arr(j, "user"), g_feature_manifest.user_fea);
+        parse_single(get_json_arr(j, "item"), g_feature_manifest.item_fea);
+        parse_single(get_json_arr(j, "context"), g_feature_manifest.context_fea);
+        parse_pair(get_json_arr(j, "ui_cross"), g_feature_manifest.ui_cross_fea);
+        parse_pair(get_json_arr(j, "ii_cross"), g_feature_manifest.ii_cross_fea);
+        parse_single(get_json_arr(j, "behavior"), g_feature_manifest.behavior_fea);
 
         ALOG(INFO, "load feature manifest success, user: %lu, item: %lu, context: %lu, ui_cross: %lu, ii_cross: %lu, behavior: %lu",
             g_feature_manifest.user_fea.size(),
@@ -68,4 +85,4 @@ bool feature_manifest_load() {
     }
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

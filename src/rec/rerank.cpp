@@ -1,9 +1,9 @@
 #include <algorithm>
 
 #include "rerank.h"
-#include "../common/log.h"
+#include "common/log.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec {
 
@@ -65,6 +65,14 @@ void rerank(Context& ctx) {
     std::unordered_map<std::string, int> cate_last_position;
     auto& rerank_config = ctx.exp_config->groups[ctx.group_id].rerank;
 
+    std::vector<uint32_t> order(ctx.candidates.size());
+    for (uint32_t i = 0; i < order.size(); i++) {
+        order[i] = i;
+    }
+    std::sort(order.begin(), order.end(), [&](const uint32_t& a, const uint32_t& b) {
+        return ctx.rank_scores[a] > ctx.rank_scores[b];
+    });
+
     size_t op_idx = 0;
     for (size_t i = 0; i < n; i++) {
         int chosen = -1;
@@ -81,14 +89,14 @@ void rerank(Context& ctx) {
 
         if (chosen == -1) {
             int first = -1;
-            for (size_t j = 0; j < ctx.candidates.size(); j++) {
+            for (auto j : order) {
                 if (used.count(j)) {
                     continue;
                 }
                 if (first == -1) {
                     first = j;
                 }
-            
+
                 std::string& item = ctx.candidates[j];
                 if (rerank_config.enable) {
                     if (rerank_config.author_gap > 0) {
@@ -146,5 +154,5 @@ void rerank(Context& ctx) {
 
 } // namespace rec
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec
 

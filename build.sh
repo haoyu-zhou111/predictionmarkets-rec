@@ -8,4 +8,4 @@ cmake ..
 
 make -j4
 
-mv ./ratus_rec ../
+mv ./predictionmarkets_rec ../

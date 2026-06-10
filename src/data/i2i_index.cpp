@@ -1,11 +1,28 @@
 #include <fstream>
+#include <thread>
 
 #include "i2i_index.h"
 #include "common/log.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 std::unordered_map<std::string, I2IIndex> g_i2i_index_map;
+
+bool i2i_index_init(const std::string& index_path, I2IIndex& index) {
+    try {
+        while (true) {
+            if (i2i_index_load(index_path, index)) {
+                ALOG(INFO, "i2i index %s init successfully", index_path.c_str());
+                return true;
+            }
+            ALOG(ERROR, "i2i index %s init failed, retry after 1s", index_path.c_str());
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "i2i index %s init fatal error: %s", index_path.c_str(), e.what());
+        return false;
+    }
+}
 
 bool i2i_index_load(const std::string& index_path, I2IIndex& index) {
     std::ifstream ifs(index_path);
@@ -46,4 +63,4 @@ bool i2i_index_load(const std::string& index_path, I2IIndex& index) {
     return true;
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

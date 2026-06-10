@@ -12,7 +12,7 @@
 #include "rec/context.h"
 #include "rec/recommend.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec_server {
 
@@ -20,9 +20,7 @@ using json = nlohmann::json;
 
 namespace {
 
-static thread_local Context ctx;
-
-class RecommendServiceImpl : public ratus_rec::RecommendService {
+class RecommendServiceImpl : public predictionmarkets_rec::RecommendService {
 public:
     void recommend(google::protobuf::RpcController* cntl,
                     const RecRequest* req,
@@ -31,48 +29,56 @@ public:
 
         brpc::ClosureGuard guard(done);
 
-        ctx.reset();
+        try {
+            Context ctx;
 
-        ctx.user_id             = req->user_id();
-        ctx.group_id            = get_user_group(ctx.user_id);
-        ctx.timestamp           = req->timestamp();
-        ctx.request_id          = req->request_id();
-        ctx.session_id          = req->session_id();
-        ctx.session_refresh_num = req->session_refresh_num();
-        ctx.topk                = req->topk();
+            ctx.user_id             = req->user_id();
+            ctx.group_id            = get_user_group(ctx.user_id);
+            ctx.timestamp           = req->timestamp();
+            ctx.request_id          = req->request_id();
+            ctx.session_id          = req->session_id();
+            ctx.session_refresh_num = req->session_refresh_num();
+            ctx.topk                = req->topk();
 
-        for (const auto& item : req->last_refresh_items()) {
-            LastRefreshItem new_item;
-            new_item.set_item_id(item.item_id());
-            new_item.set_stay_duration(item.stay_duration());
-            ctx.last_refresh_items.push_back(new_item);
+            for (const auto& item : req->last_refresh_items()) {
+                LastRefreshItem new_item;
+                new_item.set_item_id(item.item_id());
+                new_item.set_stay_duration(item.stay_duration());
+                ctx.last_refresh_items.push_back(new_item);
+            }
+
+            ctx.item_pool       = std::atomic_load(&g_item_pool);
+            ctx.item_feature    = std::atomic_load(&g_item_feature);
+            ctx.exp_config      = std::atomic_load(&g_exp_merged_config);
+
+            fetcher::fetch_user_context(ctx);
+
+            json result = rec::recommend(ctx);
+
+            res->set_code(result["code"]);
+            res->set_message(result["message"]);
+            res->set_request_id(result["request_id"]);
+            res->set_timestamp(result["timestamp"]);
+
+            auto data = res->mutable_data();
+            data->set_current_refresh_num(result["data"]["current_refresh_num"]);
+
+            for (const auto& feed : result["data"]["feed_list"]) {
+                auto new_feed = data->add_feed_list();
+                new_feed->set_item_id(feed["item_id"]);
+                new_feed->set_score(feed["score"]);
+            }
+
+            auto ext = data->mutable_ext_info();
+            ext->set_has_more(result["data"]["ext_info"]["has_more"]);
+            ext->set_strategy(result["data"]["ext_info"]["strategy"]);
+        } catch (const std::exception& e) {
+            ALOG(ERROR, "recommend exception, request_id: %s, error: %s", req->request_id().c_str(), e.what());
+            res->set_code(500);
+            res->set_message("internal error");
+            res->set_request_id(req->request_id());
+            res->set_timestamp(req->timestamp());
         }
-
-        ctx.item_pool       = std::atomic_load(&g_item_pool);
-        ctx.item_feature    = std::atomic_load(&g_item_feature);
-        ctx.exp_config      = std::atomic_load(&g_exp_merged_config);
-
-        fetcher::fetch_user_context(ctx);
-
-        json result = rec::recommend(ctx);
-    
-        res->set_code(result["code"]);
-        res->set_message(result["message"]);
-        res->set_request_id(result["request_id"]);
-        res->set_timestamp(result["timestamp"]);
-
-        auto data = res->mutable_data();
-        data->set_current_refresh_num(result["data"]["current_refresh_num"]);
-
-        for (const auto& feed : result["data"]["feed_list"]) {
-            auto new_feed = data->add_feed_list();
-            new_feed->set_item_id(feed["item_id"]);
-            new_feed->set_score(feed["score"]);
-        }
-
-        auto ext = data->mutable_ext_info();
-        ext->set_has_more(result["data"]["ext_info"]["has_more"]);
-        ext->set_strategy(result["data"]["ext_info"]["strategy"]);
     }
 };
 
@@ -107,4 +113,4 @@ void start() {
 
 } // namespace rec_server
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

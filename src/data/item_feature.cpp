@@ -2,12 +2,13 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "item_feature.h"
 #include "common/config.h"
 #include "common/log.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 std::shared_ptr<const ItemFeatureData> g_item_feature;
 
@@ -51,9 +52,7 @@ std::shared_ptr<ItemFeatureData> load_from_local() {
             const char* v_start = p;
             while (p < end && *p != ';') p++;
             std::string_view val(v_start, p - v_start);
-            try {
-                feature_map[std::string(key)] = std::string(val);
-            } catch (...) {}
+            feature_map[std::string(key)] = std::string(val);
 
             if (p < end && *p == ';') p++;
         }
@@ -133,6 +132,22 @@ std::shared_ptr<ItemFeatureData> load_and_build_index() {
 
 } // namespace
 
+bool item_feature_init() {
+    try {
+        while (true) {
+            if (item_feature_load()) {
+                ALOG(INFO, "item_feature init successfully");
+                return true;
+            }
+            ALOG(ERROR, "item_feature init failed, retry after 1s");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "item_feature init fatal error: %s", e.what());
+        return false;
+    }
+}
+
 bool item_feature_load() {
     auto data = load_and_build_index();
     if (!data) return false;
@@ -153,4 +168,4 @@ bool item_feature_reload() {
     return true;
 }
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

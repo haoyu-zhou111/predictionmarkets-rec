@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace rec_server {
 
@@ -10,5 +10,5 @@ void start();
 
 } // namespace rec_server
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec
 

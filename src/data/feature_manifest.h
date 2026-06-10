@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct FeatureManifest {
     std::vector<std::string> user_fea;
@@ -18,6 +18,8 @@ struct FeatureManifest {
 
 extern FeatureManifest g_feature_manifest;
 
+bool feature_manifest_init();
+
 bool feature_manifest_load();
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

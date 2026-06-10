@@ -6,7 +6,7 @@
 #include <string>
 #include "common/type_define.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 struct ItemFeatureData {
     std::unordered_map<ItemId, std::unordered_map<std::string, std::string>> features;
@@ -17,8 +17,10 @@ struct ItemFeatureData {
 
 extern std::shared_ptr<const ItemFeatureData> g_item_feature;
 
+bool item_feature_init();
+
 bool item_feature_load();
 
 bool item_feature_reload();
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec

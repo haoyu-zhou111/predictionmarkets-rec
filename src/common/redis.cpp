@@ -1,7 +1,7 @@
 #include "redis.h"
 #include "config.h"
 
-namespace ratus_rec {
+namespace predictionmarkets_rec {
 
 namespace redis {
 
@@ -54,7 +54,7 @@ bool get(const std::vector<std::string>& cmds, const std::vector<std::string>& k
     brpc::Controller    cntl;
     brpc::RedisRequest  req;
     
-    for (uint32_t i = 0; i < cmds.size(); ++i) {
+    for (size_t i = 0; i < cmds.size(); ++i) {
         if (cmds[i] == "lrange") {
             req.AddCommand("lrange %s 0 -1", keys[i].c_str());
         } else {
@@ -85,7 +85,7 @@ bool set(const std::vector<std::string>& cmds, const std::vector<std::string>& k
     brpc::RedisRequest  req;
     brpc::RedisResponse resp;
 
-    for (uint32_t i = 0; i < cmds.size(); i++) {
+    for (size_t i = 0; i < cmds.size(); i++) {
         req.AddCommand("%s %s %s", cmds[i].c_str(), keys[i].c_str(), values[i].c_str());
     }
     redis_cli.CallMethod(nullptr, &cntl, &req, &resp, nullptr);
@@ -100,4 +100,4 @@ bool set(const std::vector<std::string>& cmds, const std::vector<std::string>& k
 
 } // namespace redis
 
-} // namespace ratus_rec
+} // namespace predictionmarkets_rec
