@@ -1,0 +1,29 @@
+{
+    "server": {
+        "port": 15555,
+        "worker_num": 4
+    },
+    "log": {
+        "log_dir": "./logs/",
+        "level": 1
+    },
+    "redis": {
+        "host": "127.0.0.1",
+        "port": 6379,
+        "pool_size": 16
+    },
+    "data_path": {
+        "item_feature": "/data/feature/item_feature",
+        "user_feature": "/data/feature/user_feature"
+    },
+    "model_path": {
+        "rank": "/data/model/lr_model"
+    },
+    "sync": {
+        "available_item_interval_ms": 1000,
+        "available_item_api":"http://upstream/api/get_available_item_list",
+        "available_item_timeout_ms": 300,
+        "item_feature_interval_ms": 300000,
+        "rec_param_interval_ms": 60000
+    }
+}
