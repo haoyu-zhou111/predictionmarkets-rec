@@ -54,7 +54,14 @@ std::shared_ptr<ItemPoolData> try_load_item_pool() {
     json j = json::parse(response);
 
     for (const auto& item : j["items"]) {
-        data->item_set.insert(item);
+        if (!item.is_object() || !item.contains("itemid")) {
+            continue;
+        }
+        ItemId item_id = item["itemid"].get<std::string>();
+        ItemStat stat;
+        stat.show  = item.value("show",  0u);
+        stat.click = item.value("click", 0u);
+        data->item_stats[item_id] = stat;
     }
 
     return data;
@@ -66,7 +73,7 @@ bool item_pool_load() {
     try {
         auto new_data = try_load_item_pool();
         std::atomic_store(&g_item_pool, std::shared_ptr<const ItemPoolData>(new_data));
-        ALOG(INFO, "item_pool load successfully, size %lu", new_data->item_set.size());
+        ALOG(INFO, "item_pool load successfully, size %lu", new_data->item_stats.size());
         return true;
     } catch (const std::exception& e) {
         ALOG(WARNING, "item_pool_load failed: %s", e.what());

@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <random>
 #include <stack>
 #include <string.h>
@@ -92,4 +93,31 @@ inline uint32_t feature_hash(const std::string& key, uint32_t hash_size) {
     MurmurHash3_x64_128(key.data(), (int)key.size(), 0, out);
     uint64_t mask = (1ULL << hash_size) - 1;
     return out[0] & mask;
+}
+
+// Wilson score 区间下界，用作热门索引排序分（n 曝光，k 点击）
+inline double wilson_lower_bound(uint32_t n, uint32_t k, double z = 1.96) {
+    if (n == 0) {
+        return 0.0;
+    }
+    double phat   = static_cast<double>(k) / n;
+    double z2     = z * z;
+    double denom  = 1.0 + z2 / n;
+    double center = phat + z2 / (2.0 * n);
+    double margin = z * std::sqrt((phat * (1.0 - phat) + z2 / (4.0 * n)) / n);
+    return (center - margin) / denom;
+}
+
+// Beta(a, b) 采样，由两次 Gamma 采样组合得到，单次 O(1)
+inline double beta_sample(double a, double b) {
+    thread_local std::mt19937 gen(std::random_device{}());
+    std::gamma_distribution<double> ga(a, 1.0);
+    std::gamma_distribution<double> gb(b, 1.0);
+    double x = ga(gen);
+    double y = gb(gen);
+    double s = x + y;
+    if (s <= 0.0) {
+        return 0.0;
+    }
+    return x / s;
 }

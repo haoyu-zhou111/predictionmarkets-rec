@@ -6,7 +6,7 @@ namespace predictionmarkets_rec {
 namespace rec {
 
 bool check_item(Context& ctx, const ItemId& item_id) {
-    if (!ctx.item_pool->item_set.count(item_id)) {
+    if (!ctx.item_pool->item_stats.count(item_id)) {
         ALOG(DEBUG, "item %s filtered by item pool", item_id.c_str());
         return false;
     }
