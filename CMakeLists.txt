@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(predictionmarkets_rec)
 
+# 默认 Release 构建：自动带 -DNDEBUG，使 brpc 的 LOG(DEBUG) 塌缩为 VERBOSE，
+# 从而被日志级别阈值屏蔽（线上不落 debug）。本地调试保留 DEBUG：cmake -DCMAKE_BUILD_TYPE=Debug ..
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

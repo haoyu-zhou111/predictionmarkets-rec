@@ -9,7 +9,11 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // log_init(g_config.log.dir, g_config.log.level);
+    if (!predictionmarkets_rec::log_init(predictionmarkets_rec::g_config.log.dir,
+                                         predictionmarkets_rec::g_config.log.level)) {
+        printf("log init failed\n");
+        return -1;
+    }
 
     if (!predictionmarkets_rec::redis::init()) {
         ALOG(FATAL, "redis init failed");
