@@ -4,11 +4,6 @@ package predictionmarkets_rec;
 
 option cc_generic_services = true;
 
-message LastRefreshItem {
-    string item_id = 1;         
-    int64 stay_duration = 2;    
-}
-
 message RecRequest {
     string user_id = 1;
     int64 timestamp = 2;
@@ -16,9 +11,6 @@ message RecRequest {
     string session_id = 4;
     int32 session_refresh_num = 5;
     int32 topk = 6;
-
-    repeated LastRefreshItem last_refresh_items = 7;
-
 }
 
 message FeedItem {

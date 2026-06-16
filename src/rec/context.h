@@ -6,7 +6,6 @@
 #include "data/item_feature.h"
 #include "data/user_feature.h"
 #include "data/exp.h"
-#include "rec.pb.h"
 
 namespace predictionmarkets_rec {
 
@@ -18,7 +17,6 @@ struct Context {
     std::string                                                 session_id;
     uint32_t                                                    session_refresh_num = 0;
     uint32_t                                                    topk                = 10;
-    std::vector<LastRefreshItem>                                last_refresh_items;
     bool                                                        has_more            = true;
 
 
