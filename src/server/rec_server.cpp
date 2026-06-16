@@ -40,13 +40,6 @@ public:
             ctx.session_refresh_num = req->session_refresh_num();
             ctx.topk                = req->topk();
 
-            for (const auto& item : req->last_refresh_items()) {
-                LastRefreshItem new_item;
-                new_item.set_item_id(item.item_id());
-                new_item.set_stay_duration(item.stay_duration());
-                ctx.last_refresh_items.push_back(new_item);
-            }
-
             ctx.item_pool       = std::atomic_load(&g_item_pool);
             ctx.item_feature    = std::atomic_load(&g_item_feature);
             ctx.exp_config      = std::atomic_load(&g_exp_merged_config);
