@@ -1,7 +1,11 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 #include "data/item_pool.h"
 #include "data/item_feature.h"
 #include "data/user_feature.h"
