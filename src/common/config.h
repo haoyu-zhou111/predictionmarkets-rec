@@ -59,6 +59,20 @@ struct UserContextConf {
     std::string published_redis_key     = "user_published:";
 };
 
+struct GhostConf {
+    std::string admin_api_url;                          // 形如 https://host/ghost/api/admin
+    std::string admin_key;                              // Admin API Key："id:secret"
+    int         page_limit  = 100;                      // 分页每页条数
+    int         jwt_ttl_sec = 300;                      // JWT 有效期（秒）
+    int         timeout_ms  = 3000;                     // 单次请求超时
+};
+
+struct BanditConf {
+    std::string post_stat_key_prefix = "tracking:rec_sys:post:"; // 每 item 一个 hash，key = prefix + item_id
+    std::string impression_field     = "impression_total";       // hash field：总曝光数
+    std::string click_field          = "click_total";            // hash field：总点击数
+};
+
 struct Config {
     ServerConf      server;
     RedisConf       redis;
@@ -68,6 +82,8 @@ struct Config {
     LogConf         log;
     SyncConf        sync;
     UserContextConf user_context;
+    GhostConf       ghost;
+    BanditConf      bandit;
 };
 
 extern Config g_config;

@@ -26,12 +26,13 @@ void run_item_pool() {
     }
 }
 
-void run_item_feature() {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.item_feature_interval_ms));
-        item_feature_reload();
-    }
-}
+// item_feature 本阶段停载，reload 线程暂停（架子保留待后续启用）
+// void run_item_feature() {
+//     while (true) {
+//         std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.item_feature_interval_ms));
+//         item_feature_reload();
+//     }
+// }
 
 void run_exp_config() {
     while (true) {
@@ -60,7 +61,8 @@ bool init() {
         if (!exp_config_init())       return false;
 
         std::thread(run_item_pool).detach();
-        std::thread(run_item_feature).detach();
+        // item_feature 本阶段停载（见 item_feature_init），reload 线程一并注释，架子保留
+        // std::thread(run_item_feature).detach();
         std::thread(run_exp_config).detach();
 
         ALOG(INFO, "Fetcher init success: all data ready");
@@ -134,16 +136,14 @@ void fetch_user_context(Context& ctx) {
 
 
     for (auto& item : ctx.click_list) {
-        const auto f_iter = ctx.item_feature->features.find(item);
-        if (f_iter == std::end(ctx.item_feature->features)) {
+        const auto it_iter = ctx.item_pool->items.find(item);
+        if (it_iter == ctx.item_pool->items.end()) {
             continue;
         }
 
-        auto& features = f_iter->second;
-        
-        const auto cate_iter = features.find("cate");
-        if (cate_iter != features.end()) {
-            CateId c = static_cast<CateId>(cate_iter->second);
+        const auto& it = it_iter->second;
+
+        for (const CateId& c : it.cates) {
             if (ctx.recent_cates_freq.find(c) == ctx.recent_cates_freq.end()) {
                 ctx.recent_cates_freq[c] = 0;
                 ctx.recent_cates_vec.emplace_back(c);
@@ -151,9 +151,7 @@ void fetch_user_context(Context& ctx) {
             ctx.recent_cates_freq[c]++;
         }
 
-        const auto author_iter = features.find("author");
-        if (author_iter != features.end()) {
-            UserId u = static_cast<UserId>(author_iter->second);
+        for (const UserId& u : it.authors) {
             if (ctx.recent_authors_freq.find(u) == ctx.recent_authors_freq.end()) {
                 ctx.recent_authors_freq[u] = 0;
                 ctx.recent_authors_vec.emplace_back(u);

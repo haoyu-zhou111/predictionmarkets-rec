@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <unordered_map>
-#include <vector>
 #include <string>
 #include "common/type_define.h"
 
@@ -10,9 +9,6 @@ namespace predictionmarkets_rec {
 
 struct ItemFeatureData {
     std::unordered_map<ItemId, std::unordered_map<std::string, std::string>> features;
-
-    std::vector<ItemId> global_hot_items;
-    std::unordered_map<CateId, std::vector<ItemId>> cate_hot_items;
 };
 
 extern std::shared_ptr<const ItemFeatureData> g_item_feature;

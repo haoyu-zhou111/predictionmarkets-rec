@@ -65,9 +65,11 @@ void i2i_recall(Context& ctx, const std::string& channel, const RecallChannelCon
     trigger_index_recall(ctx, channel, conf, ctx.click_list, index);
 }
 
-void cate_hot_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
-    trigger_index_recall(ctx, channel, conf, ctx.recent_cates_vec, ctx.item_feature->cate_hot_items);
-}
+// cate_hot 通道暂停：需要 item_pool 提供「按分区的热门倒排索引」，本期未建（见 TODO），
+// 后续补上分区索引后恢复。原逻辑保留如下：
+// void cate_hot_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
+//     trigger_index_recall(ctx, channel, conf, ctx.recent_cates_vec, /* item_pool 分区热门索引 */);
+// }
 
 void follow_u2i_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
     trigger_index_recall(ctx, channel, conf, ctx.follow_u2i_triggers, ctx.follow_u2i_items_map);
@@ -79,7 +81,7 @@ void recent_u2i_recall(Context& ctx, const std::string& channel, const RecallCha
 
 void global_hot_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
     int tot = 0;
-    for (const auto& item : ctx.item_feature->global_hot_items) {
+    for (const auto& item : ctx.item_pool->hot_items) {
         if (add_candidate(ctx, item, channel)) {
             tot++;
             if (tot == conf.topk) {
@@ -217,7 +219,7 @@ const std::vector<RecallChannel> recalls = {
     {"i2v",         i2i_recall},
     {"swing",       i2i_recall},
     {"global_hot",  global_hot_recall},
-    {"cate_hot",    cate_hot_recall},
+    // {"cate_hot",    cate_hot_recall},   // 暂停：缺分区热门索引，见上方说明与 TODO
     {"follow_u2i",  follow_u2i_recall, follow_u2i_prepare, follow_u2i_parse},
     {"recent_u2i",  recent_u2i_recall, recent_u2i_prepare, recent_u2i_parse}
 };

@@ -22,7 +22,7 @@ struct Context {
     bool                                                        has_more            = true;
 
 
-    std::shared_ptr<const ItemPoolData>                         item_pool;
+    std::shared_ptr<const ItemPool>                             item_pool;   // 按付费状态选中的池（免费/全量）
     std::shared_ptr<const ItemFeatureData>                      item_feature;
     std::shared_ptr<const ExpConfigData>                        exp_config;
 

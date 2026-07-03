@@ -27,6 +27,8 @@ bool config_load(const std::string& conf_path) {
         auto log                                    = get_json_obj(j, "log");
         auto sync                                   = get_json_obj(j, "sync");
         auto user_context                           = get_json_obj(j, "user_context");
+        auto ghost                                  = get_json_obj(j, "ghost");
+        auto bandit                                 = get_json_obj(j, "bandit");
 
         g_config.server.port                        = get_json(server, "port", 8080);
         g_config.server.worker_num                  = get_json(server, "worker_num", 8);
@@ -63,6 +65,16 @@ bool config_load(const std::string& conf_path) {
         g_config.user_context.history_redis_key     = get_json(user_context, "history_redis_key", std::string{"user_history:"});
         g_config.user_context.followed_redis_key    = get_json(user_context, "followed_redis_key", std::string{"user_followed:"});
         g_config.user_context.published_redis_key   = get_json(user_context, "published_redis_key", std::string{"user_published:"});
+
+        g_config.ghost.admin_api_url                = get_json(ghost, "admin_api_url", std::string{""});
+        g_config.ghost.admin_key                    = get_json(ghost, "admin_key", std::string{""});
+        g_config.ghost.page_limit                   = get_json(ghost, "page_limit", 100);
+        g_config.ghost.jwt_ttl_sec                  = get_json(ghost, "jwt_ttl_sec", 300);
+        g_config.ghost.timeout_ms                   = get_json(ghost, "timeout_ms", 3000);
+
+        g_config.bandit.post_stat_key_prefix        = get_json(bandit, "post_stat_key_prefix", std::string{"tracking:rec_sys:post:"});
+        g_config.bandit.impression_field            = get_json(bandit, "impression_field", std::string{"impression_total"});
+        g_config.bandit.click_field                 = get_json(bandit, "click_field", std::string{"click_total"});
 
     } catch (...) {
         ALOG(ERROR, "parse config json failed: %s", conf_path.c_str());

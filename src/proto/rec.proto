@@ -18,7 +18,7 @@ message RecRequest {
     int32 topk = 6;
 
     repeated LastRefreshItem last_refresh_items = 7;
-
+    bool is_paid_user = 8;
 }
 
 message FeedItem {

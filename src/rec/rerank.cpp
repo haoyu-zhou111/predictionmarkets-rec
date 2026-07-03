@@ -22,18 +22,15 @@ void rerank(Context& ctx) {
 
     for (size_t i = 0; i < ctx.candidates.size(); i++) {
         std::string& item = ctx.candidates[i];
-        const auto f_iter = ctx.item_feature->features.find(item);
-        if (f_iter != std::end(ctx.item_feature->features)) {
-            auto& features = f_iter->second;
-
-            const auto cate_iter = features.find("cate");
-            if (cate_iter != features.end()) {
-                cate_map[item] = cate_iter->second;
+        const auto it_iter = ctx.item_pool->items.find(item);
+        if (it_iter != ctx.item_pool->items.end()) {
+            const auto& it = it_iter->second;
+            // 打散暂以主 tag / 主 author（列表首元素）为键，多 tag 打散待后续
+            if (!it.cates.empty()) {
+                cate_map[item] = it.cates.front();
             }
-
-            const auto author_iter = features.find("author");
-            if (author_iter != features.end()) {
-                author_map[item] = author_iter->second;
+            if (!it.authors.empty()) {
+                author_map[item] = it.authors.front();
             }
         }
 

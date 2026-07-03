@@ -47,7 +47,9 @@ public:
                 ctx.last_refresh_items.push_back(new_item);
             }
 
-            ctx.item_pool       = std::atomic_load(&g_item_pool);
+            // 付费用户取全量池，免费用户取免费池；下游只认 ctx.item_pool，不再判断付费
+            ctx.item_pool       = req->is_paid_user() ? std::atomic_load(&g_all_pool)
+                                                      : std::atomic_load(&g_free_pool);
             ctx.item_feature    = std::atomic_load(&g_item_feature);
             ctx.exp_config      = std::atomic_load(&g_exp_merged_config);
 

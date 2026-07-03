@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -44,6 +45,18 @@ inline std::unordered_set<std::string> parse<std::unordered_set<std::string>>(co
     if (r.is_array()) {
         for (size_t i = 0; i < r.size(); ++i) {
             res.insert(std::string(r[i].data()));
+        }
+    }
+    return res;
+}
+
+//hgetall（返回 [field, value, field, value, ...]）
+template<>
+inline std::unordered_map<std::string, std::string> parse<std::unordered_map<std::string, std::string>>(const brpc::RedisReply& r) {
+    std::unordered_map<std::string, std::string> res;
+    if (r.is_array()) {
+        for (size_t i = 0; i + 1 < r.size(); i += 2) {
+            res.emplace(std::string(r[i].data()), std::string(r[i + 1].data()));
         }
     }
     return res;

@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -62,90 +61,31 @@ std::shared_ptr<ItemFeatureData> load_from_local() {
     return feat;
 }
 
-void build_global_hot(std::shared_ptr<ItemFeatureData>& feat) {
-    std::vector<std::pair<ItemId, double>> items;
-
-    for (const auto& entry : feat->features) {
-        auto ctr_iter = entry.second.find("ctr");
-        if (ctr_iter == entry.second.end()) continue;
-        int ctr_bucket = -1;
-        try {
-            ctr_bucket = stoi(ctr_iter->second);
-        } catch (...) {}
-        items.emplace_back(entry.first, ctr_bucket);
-    }
-
-    std::sort(items.begin(), items.end(), [](const auto& a, const auto& b) {
-        return a.second > b.second;
-    });
-
-    feat->global_hot_items.clear();
-    for (const auto& p : items) {
-        feat->global_hot_items.push_back(p.first);
-    }
-}
-
-void build_cate_hot(std::shared_ptr<ItemFeatureData>& feat) {
-    std::unordered_map<CateId, std::vector<std::pair<ItemId, double>>> cate_map;
-
-    for (const auto& entry : feat->features) {
-        const auto& f = entry.second;
-        auto cate_iter = f.find("cate");
-        auto ctr_iter = f.find("ctr");
-
-        if (cate_iter == f.end() || ctr_iter == f.end()) continue;
-
-        CateId c = static_cast<CateId>(cate_iter->second);
-        int ctr_bucket = -1;
-        try {
-            ctr_bucket = stoi(ctr_iter->second);
-        } catch (...) {}
-        cate_map[c].emplace_back(entry.first, ctr_bucket);
-    }
-
-    feat->cate_hot_items.clear();
-    for (auto& entry : cate_map) {
-        auto& v = entry.second;
-        std::sort(v.begin(), v.end(), [](const auto& a, const auto& b) {
-            return a.second > b.second;
-        });
-
-        std::vector<ItemId> res;
-        for (auto& p : v) {
-            res.push_back(p.first);
-        }
-
-        feat->cate_hot_items[entry.first] = std::move(res);
-    }
-}
-
+// 热门索引已迁移至 item_pool（依据 bandit 曝光/点击算 Wilson score），
+// item_feature 仅保留通用特征加载。cate/ctr 索引逻辑随之下线。
 std::shared_ptr<ItemFeatureData> load_and_build_index() {
-    auto feat = load_from_local();
-    if (!feat) return nullptr;
-
-    build_global_hot(feat);
-    build_cate_hot(feat);
-
-    ALOG(INFO, "build hot index success, global hot: %lu", feat->global_hot_items.size());
-    return feat;
+    return load_from_local();
 }
 
 } // namespace
 
 bool item_feature_init() {
-    try {
-        while (true) {
-            if (item_feature_load()) {
-                ALOG(INFO, "item_feature init successfully");
-                return true;
-            }
-            ALOG(ERROR, "item_feature init failed, retry after 1s");
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-    } catch (const std::exception& e) {
-        ALOG(ERROR, "item_feature init fatal error: %s", e.what());
-        return false;
-    }
+    // 本阶段（bandit 冷启动）不加载 item_feature，架子保留待后续启用。
+    // try {
+    //     while (true) {
+    //         if (item_feature_load()) {
+    //             ALOG(INFO, "item_feature init successfully");
+    //             return true;
+    //         }
+    //         ALOG(ERROR, "item_feature init failed, retry after 1s");
+    //         std::this_thread::sleep_for(std::chrono::seconds(1));
+    //     }
+    // } catch (const std::exception& e) {
+    //     ALOG(ERROR, "item_feature init fatal error: %s", e.what());
+    //     return false;
+    // }
+    ALOG(INFO, "item_feature init skipped (disabled in bandit phase)");
+    return true;
 }
 
 bool item_feature_load() {
