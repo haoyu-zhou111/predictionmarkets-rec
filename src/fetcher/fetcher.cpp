@@ -54,9 +54,9 @@ void run_exp_config() {
 bool init() {
     try {
         if (!item_pool_init())        return false;
-        if (!item_feature_init())     return false;
-        // 本阶段召回只用热门 + 时效（新内容），i2i 无索引；精排走 bandit 跳过特征+LR。
+        // 本阶段召回只用全量（full），i2i 无索引；精排走 bandit 跳过特征+LR。
         // 故以下加载暂停（恢复对应链路时一并恢复）：
+        // if (!item_feature_init())     return false;   // item 特征（本阶段停载）
         // if (!user_feature_init())     return false;   // 特征拼接用
         // if (!feature_manifest_init()) return false;   // 特征拼接用
         // if (!recall_index_init())     return false;   // icf/i2v/swing i2i 索引
