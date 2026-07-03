@@ -41,12 +41,13 @@ void run_exp_config() {
     }
 }
 
-bool recall_index_init() {
-    if (!i2i_index_init(g_config.data_path.icf_index,   g_i2i_index_map["icf"]))   return false;
-    if (!i2i_index_init(g_config.data_path.i2v_index,   g_i2i_index_map["i2v"]))   return false;
-    if (!i2i_index_init(g_config.data_path.swing_index, g_i2i_index_map["swing"])) return false;
-    return true;
-}
+// i2i 索引本阶段无数据、召回不用，暂停加载（保留待恢复 icf/i2v/swing 召回时启用）
+// bool recall_index_init() {
+//     if (!i2i_index_init(g_config.data_path.icf_index,   g_i2i_index_map["icf"]))   return false;
+//     if (!i2i_index_init(g_config.data_path.i2v_index,   g_i2i_index_map["i2v"]))   return false;
+//     if (!i2i_index_init(g_config.data_path.swing_index, g_i2i_index_map["swing"])) return false;
+//     return true;
+// }
 
 } // namespace
 
