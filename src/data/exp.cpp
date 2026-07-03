@@ -39,7 +39,12 @@ void parse_config(const json& config_json, ExpConfig& exp_config) {
         ALOG(ERROR, "parse recall config exception: %s", e.what());
     }
 
-    //auto& rank_config = get_json_obj(config_json, "rank");
+    auto& rank_config = get_json_obj(config_json, "rank");
+    try {
+        exp_config.rank.bandit_enable = get_json(rank_config, "bandit_enable", true);
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "parse rank config exception: %s", e.what());
+    }
 
     auto& rerank_config = get_json_obj(config_json, "rerank");
     try {

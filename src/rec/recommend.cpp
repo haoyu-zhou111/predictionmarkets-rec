@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "recommend.h"
+#include "bandit.h"
 #include "feature.h"
 #include "rank.h"
 #include "recall.h"
@@ -59,8 +60,12 @@ json recommend(Context& ctx) {
     }
 
     recall(ctx);
-    feature_combine(ctx);
-    rank(ctx);
+    if (ctx.exp_config->groups[ctx.group_id].rank.bandit_enable) {
+        bandit_rank(ctx);       // bandit 阶段跳过特征组合与 LR 精排
+    } else {
+        feature_combine(ctx);
+        rank(ctx);
+    }
     rerank(ctx);
     return fill_response(ctx);
 }

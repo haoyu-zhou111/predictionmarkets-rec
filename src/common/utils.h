@@ -162,6 +162,20 @@ inline uint64_t iso8601_to_epoch(const std::string& s) {
     return epoch < 0 ? 0 : static_cast<uint64_t>(epoch);
 }
 
+// Beta(a, b) 采样：由两次 Gamma 采样组合 X/(X+Y) 得到，X~Gamma(a,1)、Y~Gamma(b,1)，单次 O(1)
+inline double beta_sample(double a, double b) {
+    thread_local std::mt19937 gen(std::random_device{}());
+    std::gamma_distribution<double> ga(a, 1.0);
+    std::gamma_distribution<double> gb(b, 1.0);
+    double x = ga(gen);
+    double y = gb(gen);
+    double s = x + y;
+    if (s <= 0.0) {
+        return 0.0;
+    }
+    return x / s;
+}
+
 // Wilson score 置信下界（z=1.96），n=0 返回 0
 inline double wilson_score(uint64_t n, uint64_t k) {
     if (n == 0) return 0.0;

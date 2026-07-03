@@ -17,6 +17,7 @@ struct RecallConfig {
 };
 
 struct RankConfig {
+    bool    bandit_enable   = true;
 };
 
 struct RerankConfig {

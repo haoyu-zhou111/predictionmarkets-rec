@@ -40,13 +40,6 @@ public:
             ctx.session_refresh_num = req->session_refresh_num();
             ctx.topk                = req->topk();
 
-            for (const auto& item : req->last_refresh_items()) {
-                LastRefreshItem new_item;
-                new_item.set_item_id(item.item_id());
-                new_item.set_stay_duration(item.stay_duration());
-                ctx.last_refresh_items.push_back(new_item);
-            }
-
             // 付费用户取全量池，免费用户取免费池；下游只认 ctx.item_pool，不再判断付费
             ctx.item_pool       = req->is_paid_user() ? std::atomic_load(&g_all_pool)
                                                       : std::atomic_load(&g_free_pool);
