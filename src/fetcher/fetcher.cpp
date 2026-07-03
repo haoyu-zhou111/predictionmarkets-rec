@@ -74,25 +74,16 @@ bool init() {
 }
 
 void fetch_user_context(Context& ctx) {
-    std::vector<std::string> cmds;
-    std::vector<std::string> keys;
-
-    //black list
-    cmds.emplace_back("smembers");
-    keys.emplace_back(g_config.user_context.blacklist_redis_key + ctx.user_id);
-
-    //history
-    cmds.emplace_back("lrange");
-    keys.emplace_back(g_config.user_context.history_redis_key + ctx.user_id);
-
-    //followed
-    cmds.emplace_back("lrange");
-    keys.emplace_back(g_config.user_context.followed_redis_key + ctx.user_id);
-
+    const auto& uc = g_config.user_context;
+    std::vector<std::vector<std::string>> commands = {
+        {"smembers", uc.blacklist_redis_key + ctx.user_id},                        // black list
+        {"lrange",   uc.history_redis_key  + ctx.user_id,        "0", "-1"},       // history
+        {"lrange",   uc.followed_redis_key + ctx.user_id,        "0", "-1"},       // followed
+        {"lrange",   g_config.rec_history.key_prefix + ctx.anchor_id, "0", "-1"},  // rec history（软降权，不过滤）
+    };
 
     brpc::RedisResponse resp;
-    bool ret = redis::get(cmds, keys, resp);
-    if (!ret) {
+    if (!redis::exec(commands, resp)) {
         ALOG(ERROR, "fetch user context failed");
         return;
     }
@@ -132,6 +123,17 @@ void fetch_user_context(Context& ctx) {
         ALOG(INFO, "get user followed success, length: %lu", ctx.followed_list.size());
     } catch (const std::exception& e) {
         ALOG(ERROR, "get user followed failed: %s", e.what());
+    }
+
+    try {
+        std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(3));
+        ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
+        hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
+        ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
+        ALOG(INFO, "get rec history success, exposed=%lu seed=%lu",
+             ctx.rec_exposed_set.size(), ctx.rec_history_list.size());
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "get rec history failed: %s", e.what());
     }
 
 

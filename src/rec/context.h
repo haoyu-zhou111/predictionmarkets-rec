@@ -15,6 +15,8 @@ namespace predictionmarkets_rec {
 
 struct Context {
     std::string                                                 user_id;
+    std::string                                                 device_id;
+    std::string                                                 anchor_id;              // 有 user_id 用 user_id，否则 device_id
     uint32_t                                                    group_id            = 0;
     uint64_t                                                    timestamp           = 0;
     std::string                                                 request_id;
@@ -31,6 +33,8 @@ struct Context {
 
     std::unordered_set<ItemId>                                  blacklist_set;
     std::unordered_set<ItemId>                                  show_set;
+    std::unordered_set<ItemId>                                  rec_exposed_set;        // 曾推给该 anchor 的 item（软降权，不做过滤）
+    std::vector<ItemId>                                         rec_history_list;       // 推荐历史（新→旧），跨刷打散种子
     std::vector<ItemId>                                         show_list;
     std::vector<ItemId>                                         click_list;
     std::vector<UserId>                                         followed_list;

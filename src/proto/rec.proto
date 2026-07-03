@@ -12,6 +12,7 @@ message RecRequest {
     int32 session_refresh_num = 5;
     int32 topk = 6;
     bool is_paid_user = 8;
+    string device_id = 9;
 }
 
 message FeedItem {

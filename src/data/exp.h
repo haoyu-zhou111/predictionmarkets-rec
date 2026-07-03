@@ -21,9 +21,13 @@ struct RankConfig {
 };
 
 struct RerankConfig {
-    bool    enable      = false;
-    int     author_gap  = 0;
-    int     cate_gap    = 0;
+    bool     enable         = false;
+    int      author_gap     = 0;
+    int      cate_gap       = 0;
+    uint32_t fresh_top_k    = 0;        // 首屏前 N 位要求 ≤ fresh_days 天（0=不启用）
+    int      fresh_days     = 7;
+    int      recent_days    = 14;       // 前 recent_screens 屏全部要求 ≤ recent_days 天
+    int      recent_screens = 3;
 };
 
 struct OperationConfig {

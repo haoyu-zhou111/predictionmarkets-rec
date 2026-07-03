@@ -194,20 +194,17 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
         return;
     }
 
-    std::vector<std::string> cmds;
-    std::vector<std::string> keys;
-    std::vector<ItemId>      ids;
-    cmds.reserve(all.items.size());
-    keys.reserve(all.items.size());
+    std::vector<std::vector<std::string>> commands;
+    std::vector<ItemId>                   ids;
+    commands.reserve(all.items.size());
     ids.reserve(all.items.size());
     for (const auto& [id, item] : all.items) {
-        cmds.emplace_back("hgetall");
-        keys.emplace_back(g_config.sync.bandit.post_stat_key_prefix + id);
+        commands.push_back({"hgetall", g_config.sync.bandit.post_stat_key_prefix + id});
         ids.emplace_back(id);
     }
 
     brpc::RedisResponse resp;
-    if (!redis::get(cmds, keys, resp)) {
+    if (!redis::exec(commands, resp)) {
         ALOG(WARNING, "fetch bandit stats failed, keep exposure/click as 0");
         return;
     }

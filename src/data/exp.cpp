@@ -51,6 +51,10 @@ void parse_config(const json& config_json, ExpConfig& exp_config) {
         exp_config.rerank.enable = get_json(rerank_config, "enable", false);
         exp_config.rerank.author_gap = get_json(rerank_config, "author_gap", 0);
         exp_config.rerank.cate_gap = get_json(rerank_config, "cate_gap", 0);
+        exp_config.rerank.fresh_top_k = get_json(rerank_config, "fresh_top_k", 0u);
+        exp_config.rerank.fresh_days = get_json(rerank_config, "fresh_days", 7);
+        exp_config.rerank.recent_days = get_json(rerank_config, "recent_days", 14);
+        exp_config.rerank.recent_screens = get_json(rerank_config, "recent_screens", 3);
     } catch (const std::exception& e) {
         ALOG(ERROR, "parse rerank config exception: %s", e.what());
     }
@@ -106,7 +110,7 @@ bool load_local_config() {
 bool merge_redis_config() {
     brpc::RedisResponse resp;
 
-    bool ret = redis::get({"GET"}, {g_config.exp.redis_key}, resp);
+    bool ret = redis::exec({{"GET", g_config.exp.redis_key}}, resp);
     if (!ret) {
         ALOG(WARNING, "exp config key %s not found", g_config.exp.redis_key.c_str());
         return false;

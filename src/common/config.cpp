@@ -27,6 +27,7 @@ bool config_load(const std::string& conf_path) {
         auto log                                    = get_json_obj(j, "log");
         auto sync                                   = get_json_obj(j, "sync");
         auto user_context                           = get_json_obj(j, "user_context");
+        auto rec_history                            = get_json_obj(j, "rec_history");
         auto ghost                                  = get_json_obj(sync, "ghost");
         auto bandit                                 = get_json_obj(sync, "bandit");
 
@@ -63,6 +64,10 @@ bool config_load(const std::string& conf_path) {
         g_config.user_context.history_redis_key     = get_json(user_context, "history_redis_key", std::string{"user_history:"});
         g_config.user_context.followed_redis_key    = get_json(user_context, "followed_redis_key", std::string{"user_followed:"});
         g_config.user_context.published_redis_key   = get_json(user_context, "published_redis_key", std::string{"user_published:"});
+
+        g_config.rec_history.key_prefix             = get_json(rec_history, "key_prefix", std::string{"rec_hist:"});
+        g_config.rec_history.ttl_sec                = get_json(rec_history, "ttl_sec", 259200);
+        g_config.rec_history.max_len                = get_json(rec_history, "max_len", 200);
 
         g_config.sync.ghost.admin_api_url           = get_json(ghost, "admin_api_url", std::string{""});
         g_config.sync.ghost.admin_key               = get_json(ghost, "admin_key", std::string{""});

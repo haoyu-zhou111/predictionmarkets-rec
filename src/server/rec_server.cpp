@@ -33,6 +33,19 @@ public:
             Context ctx;
 
             ctx.user_id             = req->user_id();
+            ctx.device_id           = req->device_id();
+            ctx.anchor_id           = !ctx.user_id.empty() ? ctx.user_id : ctx.device_id;
+
+            // user_id 与 device_id 均空则无从锚定，直接拒绝
+            if (ctx.anchor_id.empty()) {
+                ALOG(WARNING, "reject request without user_id/device_id, request_id: %s", req->request_id().c_str());
+                res->set_code(400);
+                res->set_message("missing user_id and device_id");
+                res->set_request_id(req->request_id());
+                res->set_timestamp(req->timestamp());
+                return;
+            }
+
             ctx.group_id            = get_user_group(ctx.user_id);
             ctx.timestamp           = req->timestamp();
             ctx.request_id          = req->request_id();

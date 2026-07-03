@@ -13,9 +13,9 @@ namespace redis {
 
 bool init();
 
-bool get(const std::vector<std::string>& cmds, const std::vector<std::string>& keys, brpc::RedisResponse& resp);
-
-bool set(const std::vector<std::string>& cmds, const std::vector<std::string>& keys, const std::vector<std::string>& values);
+// 多参命令流水线：每条命令是一组分量 [cmd, arg1, arg2, ...]，按分量打包成 pipeline 一次下发；
+// 调用方按 resp.reply(i) 逐条解析。避免 format 转义、支持变长命令。
+bool exec(const std::vector<std::vector<std::string>>& commands, brpc::RedisResponse& resp);
 
 template <typename T>
 T parse(const brpc::RedisReply& r);

@@ -51,6 +51,12 @@ struct UserContextConf {
     std::string published_redis_key     = "user_published:";
 };
 
+struct RecHistoryConf {
+    std::string key_prefix = "rec_hist:";               // 实际 key = prefix + anchor_id（复用主 redis）
+    int         ttl_sec    = 259200;                    // 推荐历史保留 3 天
+    int         max_len    = 200;                       // 每个 anchor 最多保留最近 N 条
+};
+
 struct GhostConf {
     std::string admin_api_url;                          // 形如 https://host/ghost/api/admin
     std::string admin_key;                              // Admin API Key："id:secret"
@@ -83,6 +89,7 @@ struct Config {
     LogConf         log;
     SyncConf        sync;
     UserContextConf user_context;
+    RecHistoryConf  rec_history;
 };
 
 extern Config g_config;

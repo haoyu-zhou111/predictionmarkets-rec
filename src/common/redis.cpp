@@ -45,53 +45,24 @@ bool init() {
     return true;
 }
 
-bool get(const std::vector<std::string>& cmds, const std::vector<std::string>& keys, brpc::RedisResponse& resp) {
-    if (cmds.size() != keys.size()) {
-        ALOG(ERROR, "cmds size %lu != keys size %lu", cmds.size(), keys.size());
-        return false;
-    }
-
+bool exec(const std::vector<std::vector<std::string>>& commands, brpc::RedisResponse& resp) {
     brpc::Controller    cntl;
     brpc::RedisRequest  req;
-    
-    for (size_t i = 0; i < cmds.size(); ++i) {
-        if (cmds[i] == "lrange") {
-            req.AddCommand("lrange %s 0 -1", keys[i].c_str());
-        } else {
-            req.AddCommand("%s %s", cmds[i].c_str(), keys[i].c_str());
+
+    for (const auto& cmd : commands) {
+        if (cmd.empty()) {
+            continue;
+        }
+        std::vector<butil::StringPiece> parts(cmd.begin(), cmd.end());
+        if (!req.AddCommandByComponents(parts.data(), parts.size())) {
+            ALOG(ERROR, "redis add command failed");
+            return false;
         }
     }
+
     redis_cli.CallMethod(nullptr, &cntl, &req, &resp, nullptr);
-    if (cntl.Failed() || resp.reply_size() != static_cast<int>(cmds.size())) {
-        ALOG(ERROR, "redis get key failed: %s", cntl.ErrorText().c_str());
-        return false;
-    }
-
-    return true;
-}
-
-bool set(const std::vector<std::string>& cmds, const std::vector<std::string>& keys, const std::vector<std::string>& values) {
-    if (cmds.size() != keys.size()) {
-        ALOG(ERROR, "cmds size %lu != keys size %lu", cmds.size(), keys.size());
-        return false;
-    }
-
-    if (cmds.size() != values.size()) {
-        ALOG(ERROR, "cmds size %lu != values size %lu", cmds.size(), values.size());
-        return false;
-    }
-
-    brpc::Controller    cntl;
-    brpc::RedisRequest  req;
-    brpc::RedisResponse resp;
-
-    for (size_t i = 0; i < cmds.size(); i++) {
-        req.AddCommand("%s %s %s", cmds[i].c_str(), keys[i].c_str(), values[i].c_str());
-    }
-    redis_cli.CallMethod(nullptr, &cntl, &req, &resp, nullptr);
-
     if (cntl.Failed()) {
-        ALOG(ERROR, "write redis failed: %s", cntl.ErrorText().c_str());
+        ALOG(ERROR, "redis exec failed: %s", cntl.ErrorText().c_str());
         return false;
     }
 

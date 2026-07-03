@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cstdint>
+#include <limits>
 
 #include "rerank.h"
 #include "common/log.h"
@@ -7,12 +9,28 @@ namespace predictionmarkets_rec {
 
 namespace rec {
 
+// 规则按优先级从弱到强声明（靠后=更强），序号即声明顺序（类似 Go iota）。
+// 真实惩罚权重由 penalty_bit 外部位移得到；新增规则插到对应位置即可，无需手改权重。
+// 逐坑位选 penalty 最小、同 penalty 分数最高者；penalty=0 即完全符合，最先出。
+enum RerankRule : uint32_t {
+    RULE_SCATTER = 0,   // 违反打散（最弱）
+    RULE_RECENCY,       // 违反时效
+    RULE_EXPOSED,       // 已曝光
+    RULE_OP,            // 运营指定坑位却非 op 内容（最强）
+};
+
+constexpr uint32_t penalty_bit(RerankRule rule) {
+    return 1u << rule;
+}
+
 void rerank(Context& ctx) {
-    auto& op_config = ctx.exp_config->groups[ctx.group_id].op;
+    auto& op_config     = ctx.exp_config->groups[ctx.group_id].op;
+    auto& rerank_config = ctx.exp_config->groups[ctx.group_id].rerank;
+
     std::unordered_map<ItemId, std::string> author_map;
     std::unordered_map<ItemId, std::string> cate_map;
-    std::unordered_set<std::string> op_items;
-    std::vector<uint32_t> op_candidates;
+    std::unordered_map<ItemId, uint64_t>    created_map;
+    std::unordered_set<std::string>         op_items;
 
     if (op_config.enable) {
         for (auto& item : op_config.items) {
@@ -20,47 +38,55 @@ void rerank(Context& ctx) {
         }
     }
 
-    for (size_t i = 0; i < ctx.candidates.size(); i++) {
-        std::string& item = ctx.candidates[i];
+    // 预取每个候选的主 tag / 主 author / 发布时间（打散与时效用）
+    for (auto& item : ctx.candidates) {
         const auto it_iter = ctx.item_pool->items.find(item);
-        if (it_iter != ctx.item_pool->items.end()) {
-            const auto& it = it_iter->second;
-            // 打散暂以主 tag / 主 author（列表首元素）为键，多 tag 打散待后续
-            if (!it.cates.empty()) {
-                cate_map[item] = it.cates.front();
-            }
-            if (!it.authors.empty()) {
-                author_map[item] = it.authors.front();
-            }
+        if (it_iter == ctx.item_pool->items.end()) {
+            continue;
         }
-
-        if (op_config.enable) {
-            if (op_items.count(item)) {
-                op_candidates.emplace_back(i);
-            }
+        const auto& it = it_iter->second;
+        if (!it.cates.empty()) {
+            cate_map[item] = it.cates.front();
         }
+        if (!it.authors.empty()) {
+            author_map[item] = it.authors.front();
+        }
+        created_map[item] = it.created_at;
     }
 
     size_t n = std::min(static_cast<size_t>(ctx.topk), ctx.candidates.size());
-    std::unordered_set<uint32_t> op_positions;
 
+    // 运营指定坑位集合（超出返回条数的忽略）
+    std::unordered_set<size_t> op_positions;
     if (op_config.enable) {
-        sort(op_candidates.begin(), op_candidates.end(), [&](const uint32_t& a, const uint32_t& b) {
-            return ctx.rank_scores[a] > ctx.rank_scores[b];
-        });
-
         for (size_t p : op_config.positions) {
-            if (p >= 0 && p < n) {
+            if (p < n) {
                 op_positions.insert(p);
             }
-        
         }
     }
 
     std::unordered_set<int> used;
     std::unordered_map<std::string, int> author_last_position;
     std::unordered_map<std::string, int> cate_last_position;
-    auto& rerank_config = ctx.exp_config->groups[ctx.group_id].rerank;
+
+    // 跨刷打散：非首页时，用最近 topk 条推荐历史作种子，置于位置 -1..-k（最新的在 -1）
+    if (rerank_config.enable && ctx.session_refresh_num > 0) {
+        for (size_t r = 0; r < ctx.rec_history_list.size(); r++) {
+            const auto it_iter = ctx.item_pool->items.find(ctx.rec_history_list[r]);
+            if (it_iter == ctx.item_pool->items.end()) {
+                continue;
+            }
+            const auto& it = it_iter->second;
+            int pos = -static_cast<int>(r + 1);
+            if (rerank_config.author_gap > 0 && !it.authors.empty()) {
+                author_last_position.emplace(it.authors.front(), pos);   // emplace 不覆盖：更近者保留
+            }
+            if (rerank_config.cate_gap > 0 && !it.cates.empty()) {
+                cate_last_position.emplace(it.cates.front(), pos);
+            }
+        }
+    }
 
     std::vector<uint32_t> order(ctx.candidates.size());
     for (uint32_t i = 0; i < order.size(); i++) {
@@ -70,60 +96,89 @@ void rerank(Context& ctx) {
         return ctx.rank_scores[a] > ctx.rank_scores[b];
     });
 
-    size_t op_idx = 0;
+    const uint32_t refresh = ctx.session_refresh_num;
+    const uint64_t now     = ctx.timestamp;
+
+    // 候选 j 放在位置 pos 的软降权：运营坑位 > 曝光 > 时效 > 打散，越小越优先
+    auto penalty_of = [&](uint32_t j, size_t pos) -> uint32_t {
+        const std::string& item = ctx.candidates[j];
+        uint32_t pen = 0;
+
+        // 运营强插：指定坑位却非 op 内容 → 最强惩罚（op 内容无此惩罚，自然占位）
+        if (op_config.enable && op_positions.count(pos) && !op_items.count(item)) {
+            pen |= penalty_bit(RULE_OP);
+        }
+
+        if (ctx.rec_exposed_set.count(item)) {
+            pen |= penalty_bit(RULE_EXPOSED);
+        }
+
+        if (rerank_config.enable) {
+            // 时效：首屏前 fresh_top_k 位要 ≤fresh_days；前 recent_screens 屏全部 ≤recent_days
+            auto ct = created_map.find(item);
+            uint64_t created_at = ct != created_map.end() ? ct->second : 0;
+            uint64_t age_day = now > created_at ? (now - created_at) / 86400 : 0;
+            bool rec_bad = false;
+            if (refresh < static_cast<uint32_t>(rerank_config.recent_screens) &&
+                age_day > static_cast<uint64_t>(rerank_config.recent_days)) {
+                rec_bad = true;
+            }
+            if (refresh == 0 && pos < rerank_config.fresh_top_k &&
+                age_day > static_cast<uint64_t>(rerank_config.fresh_days)) {
+                rec_bad = true;
+            }
+            if (rec_bad) {
+                pen |= penalty_bit(RULE_RECENCY);
+            }
+
+            // 打散：与已放置（含跨刷种子）的同作者/同类目间隔不足则违反
+            bool scat_bad = false;
+            if (rerank_config.author_gap > 0) {
+                auto a = author_map.find(item);
+                if (a != author_map.end()) {
+                    auto lp = author_last_position.find(a->second);
+                    if (lp != author_last_position.end() &&
+                        static_cast<int>(pos) - lp->second < rerank_config.author_gap) {
+                        scat_bad = true;
+                    }
+                }
+            }
+            if (!scat_bad && rerank_config.cate_gap > 0) {
+                auto c = cate_map.find(item);
+                if (c != cate_map.end()) {
+                    auto lp = cate_last_position.find(c->second);
+                    if (lp != cate_last_position.end() &&
+                        static_cast<int>(pos) - lp->second < rerank_config.cate_gap) {
+                        scat_bad = true;
+                    }
+                }
+            }
+            if (scat_bad) {
+                pen |= penalty_bit(RULE_SCATTER);
+            }
+        }
+
+        return pen;
+    };
+
     for (size_t i = 0; i < n; i++) {
+        // 选 penalty 最小、同 penalty 分数最高（order 已按分数降序）的未用候选
         int chosen = -1;
-
-        if (op_config.enable && op_positions.count(i)) {
-            while (op_idx < op_candidates.size() && used.count(op_candidates[op_idx])) {
-                op_idx++;
+        uint32_t best_pen = std::numeric_limits<uint32_t>::max();
+        for (auto j : order) {
+            if (used.count(j)) {
+                continue;
             }
-            if (op_idx < op_candidates.size()) {
-                chosen = op_candidates[op_idx];
-                op_idx++;
-            }
-        }
-
-        if (chosen == -1) {
-            int first = -1;
-            for (auto j : order) {
-                if (used.count(j)) {
-                    continue;
-                }
-                if (first == -1) {
-                    first = j;
-                }
-
-                std::string& item = ctx.candidates[j];
-                if (rerank_config.enable) {
-                    if (rerank_config.author_gap > 0) {
-                        auto author_iter = author_map.find(item);
-                        if (author_iter != author_map.end() &&
-                            author_last_position.find(author_iter->second) != author_last_position.end() &&
-                            static_cast<int>(i) - author_last_position[author_iter->second] < rerank_config.author_gap) {
-                            continue;
-                        }
-                    }
-
-                    if (rerank_config.cate_gap > 0) {
-                        auto cate_iter = cate_map.find(item);
-                        if (cate_iter != cate_map.end() &&
-                            cate_last_position.find(cate_iter->second) != cate_last_position.end() &&
-                            static_cast<int>(i) - cate_last_position[cate_iter->second] < rerank_config.cate_gap) {
-                            continue;
-                        }
-                    }
-                }
-
+            uint32_t pen = penalty_of(j, i);
+            if (pen < best_pen) {
+                best_pen = pen;
                 chosen = j;
-                break;
-            }
-
-            if (chosen == -1) {
-                chosen = first;
+                if (pen == 0) {
+                    break;   // 已最优，提前结束
+                }
             }
         }
-    
+
         if (chosen == -1) {
             ALOG(ERROR, "can't reach here, something wrong in rerank part");
             break;
@@ -143,7 +198,7 @@ void rerank(Context& ctx) {
                     cate_last_position[cate_iter->second] = i;
                 }
             }
-        }            
+        }
         ctx.final_results.emplace_back(chosen_item, chosen);
         used.insert(chosen);
     }
@@ -152,4 +207,3 @@ void rerank(Context& ctx) {
 } // namespace rec
 
 } // namespace predictionmarkets_rec
-

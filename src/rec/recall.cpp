@@ -105,23 +105,21 @@ void follow_u2i_prepare(
     Context& ctx,
     const std::string& channel,
     const RecallChannelConfig& conf,
-    std::vector<std::string>& redis_cmds,
-    std::vector<std::string>& redis_keys,
+    std::vector<std::vector<std::string>>& commands,
     std::unordered_map<std::string, size_t>& idx_mapping,
     std::vector<size_t>& parse_idx
 ) {
 
     ctx.follow_u2i_triggers = sample(ctx.followed_list, conf.trigger_count);
     for (auto& t : ctx.follow_u2i_triggers) {
-        
+
         std::string c = "lrange" + g_config.user_context.published_redis_key;
         c += t;
 
         auto idx_iter = idx_mapping.find(c);
         if (idx_iter == idx_mapping.end()) {
-            redis_cmds.emplace_back("lrange");
-            redis_keys.emplace_back(g_config.user_context.published_redis_key + t);
-            int idx = redis_cmds.size() - 1;
+            commands.push_back({"lrange", g_config.user_context.published_redis_key + t, "0", "-1"});
+            size_t idx = commands.size() - 1;
             idx_mapping[c] = idx;
             parse_idx.emplace_back(idx);
         } else {
@@ -134,8 +132,7 @@ void recent_u2i_prepare(
     Context& ctx,
     const std::string& channel,
     const RecallChannelConfig& conf,
-    std::vector<std::string>& redis_cmds,
-    std::vector<std::string>& redis_keys,
+    std::vector<std::vector<std::string>>& commands,
     std::unordered_map<std::string, size_t>& idx_mapping,
     std::vector<size_t>& parse_idx
 ) {
@@ -143,15 +140,14 @@ void recent_u2i_prepare(
     for (size_t i = 0; i < std::min(ctx.recent_authors_vec.size(), static_cast<size_t>(conf.trigger_count)); i++) {
         auto& t = ctx.recent_authors_vec[i];
         ctx.recent_u2i_triggers.emplace_back(t);
-        
+
         std::string c = "lrange" + g_config.user_context.published_redis_key;
         c += t;
 
         auto idx_iter = idx_mapping.find(c);
         if (idx_iter == idx_mapping.end()) {
-            redis_cmds.emplace_back("lrange");
-            redis_keys.emplace_back(g_config.user_context.published_redis_key + t);
-            int idx = redis_cmds.size() - 1;
+            commands.push_back({"lrange", g_config.user_context.published_redis_key + t, "0", "-1"});
+            size_t idx = commands.size() - 1;
             idx_mapping[c] = idx;
             parse_idx.emplace_back(idx);
         } else {
@@ -188,8 +184,7 @@ using PrepareFunc = void (*)(
     Context& ctx,
     const std::string& channel,
     const RecallChannelConfig& conf,
-    std::vector<std::string>& redis_cmds,
-    std::vector<std::string>& redis_keys,
+    std::vector<std::vector<std::string>>& commands,
     std::unordered_map<std::string, size_t>& idx_mapping,
     std::vector<size_t>& parse_idx
 );
@@ -229,8 +224,7 @@ const std::vector<RecallChannel> recalls = {
 void recall(Context& ctx) {
     auto& group_conf = ctx.exp_config->groups[ctx.group_id];
     auto& recall_config = group_conf.recall.channel_config;
-    std::vector<std::string> redis_cmds;
-    std::vector<std::string> redis_keys;
+    std::vector<std::vector<std::string>> commands;
     std::unordered_map<std::string, size_t> idx_mapping;
     std::vector<std::vector<size_t>> channel_parse_idx(recalls.size());
 
@@ -238,15 +232,15 @@ void recall(Context& ctx) {
         auto& [channel, recall_func, prepare_func, parse_func] = recalls[i];
         auto conf_iter = recall_config.find(channel);
         if (conf_iter != recall_config.end() && conf_iter->second.enable && prepare_func != nullptr) {
-            prepare_func(ctx, channel, conf_iter->second, redis_cmds, redis_keys, idx_mapping, channel_parse_idx[i]);
+            prepare_func(ctx, channel, conf_iter->second, commands, idx_mapping, channel_parse_idx[i]);
         }
     }
 
-    if (redis_cmds.empty()) {
+    if (commands.empty()) {
         ALOG(INFO, "no redis recall cmds, skip redis fetch and parse");
     } else {
         brpc::RedisResponse resp;
-        redis::get(redis_cmds, redis_keys, resp);
+        redis::exec(commands, resp);
 
         for (size_t i = 0; i < recalls.size(); i++) {
             auto& [channel, recall_func, prepare_func, parse_func] = recalls[i];
