@@ -239,25 +239,26 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
     }
 }
 
-// 热门索引：预算好每个 item 的 Wilson score 再按其降序排，exposure=0 不入
-std::vector<ItemId> build_hot_index(const std::unordered_map<ItemId, Item>& items) {
-    std::vector<std::pair<ItemId, double>> scored;
-    scored.reserve(items.size());
-    for (const auto& [id, item] : items) {
-        if (item.exposure == 0) continue;
-        scored.emplace_back(id, wilson_score(item.exposure, item.click));
-    }
-    std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
-        return a.second > b.second;
-    });
-
-    std::vector<ItemId> res;
-    res.reserve(scored.size());
-    for (auto& p : scored) {
-        res.push_back(std::move(p.first));
-    }
-    return res;
-}
+// 热门索引：预算好每个 item 的 Wilson score 再按其降序排，exposure=0 不入。
+// 本阶段暂停（全量召回 + bandit），保留待阶段二恢复 global_hot 时启用。
+// std::vector<ItemId> build_hot_index(const std::unordered_map<ItemId, Item>& items) {
+//     std::vector<std::pair<ItemId, double>> scored;
+//     scored.reserve(items.size());
+//     for (const auto& [id, item] : items) {
+//         if (item.exposure == 0) continue;
+//         scored.emplace_back(id, wilson_score(item.exposure, item.click));
+//     }
+//     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+//         return a.second > b.second;
+//     });
+//
+//     std::vector<ItemId> res;
+//     res.reserve(scored.size());
+//     for (auto& p : scored) {
+//         res.push_back(std::move(p.first));
+//     }
+//     return res;
+// }
 
 // 新内容索引：按 created_at 降序
 std::vector<ItemId> build_new_index(const std::unordered_map<ItemId, Item>& items) {
@@ -279,7 +280,8 @@ std::vector<ItemId> build_new_index(const std::unordered_map<ItemId, Item>& item
 }
 
 void build_index(ItemPool& pool) {
-    pool.hot_items = build_hot_index(pool.items);
+    // 热门索引暂停：本阶段用全量召回（bandit 需探索 n=0 未曝光内容），hot_items 无人读。以后恢复 global_hot 再放开。
+    // pool.hot_items = build_hot_index(pool.items);
     pool.new_items = build_new_index(pool.items);
 }
 

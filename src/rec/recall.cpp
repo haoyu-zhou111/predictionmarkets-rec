@@ -91,6 +91,14 @@ void global_hot_recall(Context& ctx, const std::string& channel, const RecallCha
     }
 }
 
+// 全量召回：所有 item 进候选，让 bandit(Thompson) 能探索包括 n=0(未曝光) 的新内容。
+// 内容量少，不设上限；check_item 内部仍过滤黑名单/去重。
+void full_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
+    for (const auto& [id, item] : ctx.item_pool->items) {
+        add_candidate(ctx, id, channel);
+    }
+}
+
 void op_recall(Context& ctx) {
     auto& op_config = ctx.exp_config->groups[ctx.group_id].op;
     if (!op_config.enable) {
@@ -214,6 +222,7 @@ const std::vector<RecallChannel> recalls = {
     {"i2v",         i2i_recall},
     {"swing",       i2i_recall},
     {"global_hot",  global_hot_recall},
+    {"full",        full_recall},
     // {"cate_hot",    cate_hot_recall},   // 暂停：缺分区热门索引，见上方说明与 TODO
     {"follow_u2i",  follow_u2i_recall, follow_u2i_prepare, follow_u2i_parse},
     {"recent_u2i",  recent_u2i_recall, recent_u2i_prepare, recent_u2i_parse}

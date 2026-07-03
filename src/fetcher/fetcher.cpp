@@ -54,10 +54,12 @@ bool init() {
     try {
         if (!item_pool_init())        return false;
         if (!item_feature_init())     return false;
-        if (!user_feature_init())     return false;
-        if (!feature_manifest_init()) return false;
-        if (!recall_index_init())     return false;
-        if (!lr_model_init())         return false;
+        // 本阶段召回只用热门 + 时效（新内容），i2i 无索引；精排走 bandit 跳过特征+LR。
+        // 故以下加载暂停（恢复对应链路时一并恢复）：
+        // if (!user_feature_init())     return false;   // 特征拼接用
+        // if (!feature_manifest_init()) return false;   // 特征拼接用
+        // if (!recall_index_init())     return false;   // icf/i2v/swing i2i 索引
+        // if (!lr_model_init())         return false;   // LR 精排用
         if (!exp_config_init())       return false;
 
         std::thread(run_item_pool).detach();
