@@ -80,7 +80,7 @@ void recent_u2i_recall(Context& ctx, const std::string& channel, const RecallCha
 }
 
 void global_hot_recall(Context& ctx, const std::string& channel, const RecallChannelConfig& conf) {
-    int tot = 0;
+    uint32_t tot = 0;
     for (const auto& item : ctx.item_pool->hot_items) {
         if (add_candidate(ctx, item, channel)) {
             tot++;
