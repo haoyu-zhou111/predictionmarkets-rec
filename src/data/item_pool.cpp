@@ -27,7 +27,7 @@ namespace {
 
 // 依据 Ghost Admin API Key（"id:secret"）生成短期 HS256 JWT
 std::string make_ghost_jwt() {
-    const std::string& admin_key = g_config.ghost.admin_key;
+    const std::string& admin_key = g_config.sync.ghost.admin_key;
     size_t sep = admin_key.find(':');
     if (sep == std::string::npos) {
         ALOG(ERROR, "ghost admin_key must be in 'id:secret' form");
@@ -41,7 +41,7 @@ std::string make_ghost_jwt() {
     json header  = {{"alg", "HS256"}, {"typ", "JWT"}, {"kid", kid}};
     json payload = {
         {"iat", now},
-        {"exp", now + g_config.ghost.jwt_ttl_sec},
+        {"exp", now + g_config.sync.ghost.jwt_ttl_sec},
         {"aud", "/admin/"}
     };
 
@@ -84,7 +84,7 @@ bool curl_init() {
 
     curl_easy_setopt(g_curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(g_curl, CURLOPT_NOSIGNAL,      1L);
-    curl_easy_setopt(g_curl, CURLOPT_TIMEOUT_MS,    g_config.ghost.timeout_ms);
+    curl_easy_setopt(g_curl, CURLOPT_TIMEOUT_MS,    g_config.sync.ghost.timeout_ms);
     curl_easy_setopt(g_curl, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(g_curl, CURLOPT_FORBID_REUSE,  0L);
     return true;
@@ -150,11 +150,11 @@ void parse_posts(const json& posts, ItemPool& all, ItemPool& free) {
 // 分页拉取全部 status:published 的 post
 void fetch_ghost_posts(ItemPool& all, ItemPool& free) {
     std::string jwt = make_ghost_jwt();
-    const std::string base = g_config.ghost.admin_api_url + "/posts/"
+    const std::string base = g_config.sync.ghost.admin_api_url + "/posts/"
         "?filter=status:published"
         "&fields=id,title,slug,visibility,created_at,updated_at"
         "&include=tags,authors"
-        "&limit=" + std::to_string(g_config.ghost.page_limit);
+        "&limit=" + std::to_string(g_config.sync.ghost.page_limit);
 
     int page = 1;
     while (true) {
@@ -202,7 +202,7 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
     ids.reserve(all.items.size());
     for (const auto& [id, item] : all.items) {
         cmds.emplace_back("hgetall");
-        keys.emplace_back(g_config.bandit.post_stat_key_prefix + id);
+        keys.emplace_back(g_config.sync.bandit.post_stat_key_prefix + id);
         ids.emplace_back(id);
     }
 
@@ -212,8 +212,8 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
         return;
     }
 
-    const std::string& imp_field = g_config.bandit.impression_field;
-    const std::string& clk_field = g_config.bandit.click_field;
+    const std::string& imp_field = g_config.sync.bandit.impression_field;
+    const std::string& clk_field = g_config.sync.bandit.click_field;
     for (size_t i = 0; i < ids.size(); i++) {
         auto fields = redis::parse<std::unordered_map<std::string, std::string>>(resp.reply(i));
 

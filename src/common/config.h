@@ -44,14 +44,6 @@ struct LogConf {
     int         level = 0;
 };
 
-struct SyncConf {
-    int         available_item_interval_ms = 1000;
-    std::string available_item_api;
-    int         available_item_timeout_ms  = 300;
-    int         item_feature_interval_ms   = 300000;
-    int         exp_config_interval_ms     = 60000;
-};
-
 struct UserContextConf {
     std::string blacklist_redis_key     = "user_black:";
     std::string history_redis_key       = "user_history:";
@@ -73,6 +65,15 @@ struct BanditConf {
     std::string click_field          = "click_total";            // hash field：总点击数
 };
 
+// 后台定时同步：三个 reload 间隔 + item 数据源（ghost/bandit）子配置
+struct SyncConf {
+    int         item_pool_interval_ms    = 1000;        // item_pool 轮询（拉 ghost + 回填 bandit n/k）
+    int         item_feature_interval_ms = 300000;      // item_feature reload（本阶段停载，保留语义）
+    int         exp_config_interval_ms   = 60000;       // 实验配置 reload
+    GhostConf   ghost;
+    BanditConf  bandit;
+};
+
 struct Config {
     ServerConf      server;
     RedisConf       redis;
@@ -82,8 +83,6 @@ struct Config {
     LogConf         log;
     SyncConf        sync;
     UserContextConf user_context;
-    GhostConf       ghost;
-    BanditConf      bandit;
 };
 
 extern Config g_config;

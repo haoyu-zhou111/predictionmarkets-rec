@@ -21,7 +21,7 @@ namespace {
 
 void run_item_pool() {
     while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.available_item_interval_ms));
+        std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.item_pool_interval_ms));
         item_pool_load();
     }
 }

@@ -1,11 +1,23 @@
+#include <cstdlib>
+#include <string>
+
 #include "common/config.h"
 #include "common/log.h"
 #include "common/redis.h"
 #include "server/rec_server.h"
 
 int main(int argc, char* argv[]) {
-    if (!predictionmarkets_rec::config_load("./conf/config.conf")) {
-        printf("config load failed\n");
+    // 默认测试环境；只有显式信号才切生产，避免误连线上
+    std::string conf_path = "./conf/config.conf";
+    if (argc > 1) {
+        conf_path = argv[1];
+    } else if (const char* env = std::getenv("APP_ENV");
+               env && std::string(env) == "prod") {
+        conf_path = "./conf/config.prod.conf";
+    }
+
+    if (!predictionmarkets_rec::config_load(conf_path)) {
+        printf("config load failed: %s\n", conf_path.c_str());
         return -1;
     }
 
