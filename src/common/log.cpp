@@ -78,10 +78,9 @@ public:
         lf.ofs.write(content.data(), content.size());
         lf.ofs.put('\n');
 
-        // ERROR/FATAL 立即刷盘（重要且少）；INFO/WARNING 交给流缓冲，避免每条 flush 拖慢
-        if (severity >= logging::BLOG_ERROR) {
-            lf.ofs.flush();
-        }
+        // 每条即时刷盘：本服务日志量低，flush 开销可忽略，换取可实时 tail；
+        // 且本 sink 常驻不析构，缓冲的 INFO/WARNING 到进程退出都不会落盘，必须主动 flush
+        lf.ofs.flush();
         return true;   // 返回 true 接管，不再走 brpc 默认 stderr 输出
     }
 
