@@ -117,7 +117,17 @@ bool merge_redis_config() {
     }
     try {
         auto json_str = redis::parse<std::string>(resp.reply(0));
-        json j = json::parse(json_str);
+        // 远端 exp 为空（key 不存在/取到空串）时退回纯本地配置，避免 json::parse("")
+        // 抛异常导致 exp_config_init 无限重试卡死启动。空可能是真没配，也可能是
+        // redis 读取 / 上游写入出了问题，打 WARNING 提示留意。
+        json j;
+        if (json_str.empty()) {
+            ALOG(WARNING, "remote exp config empty (key=%s), fall back to local exp config",
+                 g_config.exp.redis_key.c_str());
+            j = json::object();
+        } else {
+            j = json::parse(json_str);
+        }
 
         json exp_redis_base = get_json_obj(j, "base");
 
