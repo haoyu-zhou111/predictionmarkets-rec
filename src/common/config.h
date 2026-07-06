@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "common/log.h"
 #include "common/utils.h"
 
@@ -12,12 +13,13 @@ struct ServerConf {
 };
 
 struct RedisConf {
-    std::string host               = "127.0.0.1";
-    int         port               = 6379;
-    std::string password;
-    int         timeout_ms         = 5;
-    int         connect_timeout_ms = 200;
-    int         max_retry          = 2;
+    std::vector<std::string> nodes;                     // cluster seed 节点，形如 "ip:port"，逗号拼给 RedisClusterChannel::Init
+    std::string              password;                  // 预留：brpc RedisClusterChannel 暂不支持 AUTH
+    int                      timeout_ms         = 50;    // 单条命令(单节点子调用)超时；cluster 下一个 request 会拆成多条串行子调用
+    int                      connect_timeout_ms = 200;   // 连接超时
+    int                      max_retry          = 2;     // 单条子调用重试
+    int                      max_redirect       = 5;     // MOVED/ASK 最大重定向次数
+    int                      batch_window       = 64;    // exec_batch 分片窗口：每片命令数，多片异步并发下发
 };
 
 struct ExpConf {

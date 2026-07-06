@@ -203,16 +203,18 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
         ids.emplace_back(id);
     }
 
-    brpc::RedisResponse resp;
-    if (!redis::exec(commands, resp)) {
-        ALOG(WARNING, "fetch bandit stats failed, keep exposure/click as 0");
-        return;
-    }
+    // cluster 下一个 request 会被拆成多条串行子调用，上千 key 串行会超一秒；
+    // 按 batch_window 分片、多片异步并发下发（详见 redis::exec_batch）。
+    redis::BatchReplies batch = redis::exec_batch(commands, g_config.redis.batch_window);
 
     const std::string& imp_field = g_config.sync.bandit.impression_field;
     const std::string& clk_field = g_config.sync.bandit.click_field;
     for (size_t i = 0; i < ids.size(); i++) {
-        auto fields = redis::parse<std::unordered_map<std::string, std::string>>(resp.reply(i));
+        const brpc::RedisReply* rp = batch.replies[i];
+        if (rp == nullptr) {
+            continue;                                     // 该命令所在分片失败/超时 → n/k 保持 0
+        }
+        auto fields = redis::parse<std::unordered_map<std::string, std::string>>(*rp);
 
         uint64_t exposure = 0;
         uint64_t click    = 0;

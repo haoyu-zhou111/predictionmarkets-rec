@@ -34,12 +34,13 @@ bool config_load(const std::string& conf_path) {
         g_config.server.port                        = get_json(server, "port", 8080);
         g_config.server.worker_num                  = get_json(server, "worker_num", 8);
 
-        g_config.redis.host                         = get_json(redis, "host", std::string{"127.0.0.1"});
-        g_config.redis.port                         = get_json(redis, "port", 6379);
+        g_config.redis.nodes                        = get_json(redis, "nodes", std::vector<std::string>{});
         g_config.redis.password                     = get_json(redis, "password", std::string{""});
-        g_config.redis.timeout_ms                   = get_json(redis, "timeout_ms", 5);
+        g_config.redis.timeout_ms                   = get_json(redis, "timeout_ms", 50);
         g_config.redis.connect_timeout_ms           = get_json(redis, "connect_timeout_ms", 200);
         g_config.redis.max_retry                    = get_json(redis, "max_retry", 2);
+        g_config.redis.max_redirect                 = get_json(redis, "max_redirect", 5);
+        g_config.redis.batch_window                 = get_json(redis, "batch_window", 64);
 
         g_config.exp.local_path                     = get_json(exp, "local_path", std::string{"./conf/exp.conf"});
         g_config.exp.redis_key                      = get_json(exp, "redis_key", std::string{"exp_config"});
