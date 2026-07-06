@@ -189,7 +189,7 @@ void fetch_ghost_posts(ItemPool& all, ItemPool& free) {
 
 // bandit 曝光/点击：每个 item 一个 hash（key = prefix + item_id），
 // field 为 impression_total / click_total，用 pipeline 批量 HGETALL 后回填
-void fill_bandit_stats(ItemPool& all, ItemPool& free) {
+[[maybe_unused]] void fill_bandit_stats(ItemPool& all, ItemPool& free) {
     if (all.items.empty()) {
         return;
     }
@@ -290,7 +290,8 @@ void build_index(ItemPool& pool) {
 // 栈上构建免费池与全量池：拉取 Ghost post → 回填 bandit n/k → 各自建索引
 void build_pools(ItemPool& all, ItemPool& free) {
     fetch_ghost_posts(all, free);
-    fill_bandit_stats(all, free);
+    // [临时·redis 未接通] 屏蔽 bandit n/k 回填（读 redis）；redis 打通后放开，屏蔽期间 n/k 为 0
+    // fill_bandit_stats(all, free);
     build_index(all);
     build_index(free);
 }

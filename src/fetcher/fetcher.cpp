@@ -34,7 +34,7 @@ void run_item_pool() {
 //     }
 // }
 
-void run_exp_config() {
+[[maybe_unused]] void run_exp_config() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.exp_config_interval_ms));
         exp_config_reload();
@@ -66,7 +66,8 @@ bool init() {
         std::thread(run_item_pool).detach();
         // item_feature 本阶段停载（见 item_feature_init），reload 线程一并注释，架子保留
         // std::thread(run_item_feature).detach();
-        std::thread(run_exp_config).detach();
+        // [临时·redis 未接通] 屏蔽 exp 的 redis 定时 reload；redis 打通后放开
+        // std::thread(run_exp_config).detach();
 
         ALOG(INFO, "Fetcher init success: all data ready");
         return true;

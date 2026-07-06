@@ -150,10 +150,13 @@ bool exp_config_load() {
     if (!load_local_config()) {
         return false;
     }
-    
-    if (!merge_redis_config()) {
-        return false;
-    }
+
+    // [临时·redis 未接通] 屏蔽 redis 合并，仅用本地 exp 配置；redis 打通后放开。
+    // 注意：g_exp_merged_config 仅在 merge_redis_config 内设置，屏蔽期间为空，
+    //       推荐请求会因 ctx.exp_config 为空而不可用（本阶段只测 item_pool 同步 + 日志，不发请求）。
+    // if (!merge_redis_config()) {
+    //     return false;
+    // }
     return true;
 }
 

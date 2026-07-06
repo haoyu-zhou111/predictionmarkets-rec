@@ -27,10 +27,11 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    if (!predictionmarkets_rec::redis::init()) {
-        ALOG(FATAL, "redis init failed");
-        return -1;
-    }
+    // [临时·redis 未接通] 屏蔽 redis 初始化，仅测 item_pool 同步 + 日志；redis 打通后放开
+    // if (!predictionmarkets_rec::redis::init()) {
+    //     ALOG(FATAL, "redis init failed");
+    //     return -1;
+    // }
 
     if (!predictionmarkets_rec::rec_server::init()) {
         ALOG(FATAL, "server init failed");
