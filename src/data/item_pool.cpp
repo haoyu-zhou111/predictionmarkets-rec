@@ -94,6 +94,12 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     std::string response;
     curl_easy_setopt(g_curl, CURLOPT_URL,       url.c_str());
     curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &response);
+    // [本地测试专用·上线前删除] 本地经公网 test.predictionmarkets.org 抓 Ghost 会过 Cloudflare，
+    // libcurl 默认不发 User-Agent → 被 CF 拦成 HTML → json::parse 撞 '<'。加个 UA 绕过。
+    // 上测试/生产走内网直连 Ghost，无 CF，不需要此行，务必删除或注释。
+    curl_easy_setopt(g_curl, CURLOPT_USERAGENT,
+                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36");
 
     struct curl_slist* headers = nullptr;
     std::string auth = "Authorization: Ghost " + jwt;
