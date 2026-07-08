@@ -14,7 +14,7 @@
 namespace predictionmarkets_rec {
 
 struct Context {
-    UserId                                                      user_id;
+    UserId                                                      user_id;                // 上游 Ghost member.id（非 uuid）；与 author_id 非同一 id 空间
     DeviceId                                                    device_id;
     AnchorId                                                    anchor_id;              // 有 user_id 用 user_id，否则 device_id
     uint32_t                                                    group_id            = 0;
