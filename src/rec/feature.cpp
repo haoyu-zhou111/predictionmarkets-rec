@@ -13,7 +13,7 @@ namespace {
 
 void generate_single(
     const std::vector<std::string>& feature_list,
-    const std::unordered_map<std::string, std::string>& feature_map,
+    const FeatureMap& feature_map,
     std::vector<uint32_t>& idx_vec
 ) {
     
@@ -31,8 +31,8 @@ void generate_single(
 
 void generate_pair(
     const std::vector<std::pair<std::string, std::string>>& feature_pair,
-    const std::unordered_map<std::string, std::string>& first, 
-    const std::unordered_map<std::string, std::string>& second,
+    const FeatureMap& first,
+    const FeatureMap& second,
     std::vector<uint32_t>& idx_vec
 ) {
 
@@ -64,7 +64,7 @@ void feature_combine(Context& ctx) {
     ctx.feature_idx.resize(ctx.candidates.size());
     ctx.behavior_feature_vec.resize(ctx.candidates.size());
 
-    auto user_feature_iter = g_user_feature.find(ctx.user_id);
+    auto user_feature_iter = g_user_feature.find(ctx.anchor_id);
     for (size_t i = 0; i < ctx.candidates.size(); ++i) {
         auto& idx_vec = ctx.feature_idx[i];
 

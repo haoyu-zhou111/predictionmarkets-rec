@@ -34,7 +34,7 @@ void run_item_pool() {
 //     }
 // }
 
-[[maybe_unused]] void run_exp_config() {
+void run_exp_config() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(g_config.sync.exp_config_interval_ms));
         exp_config_reload();
@@ -66,8 +66,7 @@ bool init() {
         std::thread(run_item_pool).detach();
         // item_feature 本阶段停载（见 item_feature_init），reload 线程一并注释，架子保留
         // std::thread(run_item_feature).detach();
-        // [临时·redis 未接通] 屏蔽 exp 的 redis 定时 reload；redis 打通后放开
-        // std::thread(run_exp_config).detach();
+        std::thread(run_exp_config).detach();
 
         ALOG(INFO, "Fetcher init success: all data ready");
         return true;
@@ -80,10 +79,11 @@ bool init() {
 void fetch_user_context(Context& ctx) {
     const auto& uc = g_config.user_context;
     std::vector<std::vector<std::string>> commands = {
-        {"smembers", uc.blacklist_redis_key + ctx.user_id},                        // black list
-        {"lrange",   uc.history_redis_key  + ctx.user_id,        "0", "-1"},       // history
-        {"lrange",   uc.followed_redis_key + ctx.user_id,        "0", "-1"},       // followed
-        {"lrange",   g_config.rec_history.key_prefix + ctx.anchor_id, "0", "-1"},  // rec history（软降权，不过滤）
+        {"smembers", uc.blacklist_redis_key + ctx.anchor_id},                      // black list
+        {"lrange",   uc.history_redis_key  + ctx.anchor_id,      "0", "-1"},       // history
+        {"lrange",   uc.followed_redis_key + ctx.anchor_id,      "0", "-1"},       // followed
+        // [本阶段暂不启用] 历史推荐读取；redis 已通，本期不拉 rec_history，恢复时放开
+        // {"lrange",   g_config.rec_history.key_prefix + ctx.anchor_id, "0", "-1"},  // rec history（软降权，不过滤）
     };
 
     brpc::RedisResponse resp;
@@ -129,16 +129,18 @@ void fetch_user_context(Context& ctx) {
         ALOG(ERROR, "get user followed failed: %s", e.what());
     }
 
-    try {
-        std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(3));
-        ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
-        hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
-        ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
-        ALOG(INFO, "get rec history success, exposed=%lu seed=%lu",
-             ctx.rec_exposed_set.size(), ctx.rec_history_list.size());
-    } catch (const std::exception& e) {
-        ALOG(ERROR, "get rec history failed: %s", e.what());
-    }
+    // [本阶段暂不启用] 历史推荐读取；redis 已通，本期不拉 rec_history，恢复时放开
+    // rec_exposed_set / rec_history_list 保持空，rerank 的曝光软降权与跨刷打散自然不生效
+    // try {
+    //     std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(3));
+    //     ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
+    //     hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
+    //     ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
+    //     ALOG(INFO, "get rec history success, exposed=%lu seed=%lu",
+    //          ctx.rec_exposed_set.size(), ctx.rec_history_list.size());
+    // } catch (const std::exception& e) {
+    //     ALOG(ERROR, "get rec history failed: %s", e.what());
+    // }
 
 
     for (auto& item : ctx.click_list) {

@@ -14,9 +14,9 @@
 namespace predictionmarkets_rec {
 
 struct Context {
-    std::string                                                 user_id;
-    std::string                                                 device_id;
-    std::string                                                 anchor_id;              // 有 user_id 用 user_id，否则 device_id
+    UserId                                                      user_id;
+    DeviceId                                                    device_id;
+    AnchorId                                                    anchor_id;              // 有 user_id 用 user_id，否则 device_id
     uint32_t                                                    group_id            = 0;
     uint64_t                                                    timestamp           = 0;
     std::string                                                 request_id;
@@ -39,7 +39,7 @@ struct Context {
     std::vector<ItemId>                                         click_list;
     std::vector<UserId>                                         followed_list;
 
-    std::unordered_map<std::string, std::string>                context_feature_map;
+    FeatureMap                                                  context_feature_map;
 
     std::unordered_map<CateId, int>                             recent_cates_freq;
     std::vector<CateId>                                         recent_cates_vec;
@@ -48,12 +48,12 @@ struct Context {
 
     std::vector<UserId>                                         follow_u2i_triggers;
     std::vector<UserId>                                         recent_u2i_triggers;
-    std::unordered_map<UserId, std::vector<ItemId>>             follow_u2i_items_map;
-    std::unordered_map<UserId, std::vector<ItemId>>             recent_u2i_items_map;
+    U2IIndex                                                    follow_u2i_items_map;
+    U2IIndex                                                    recent_u2i_items_map;
 
     std::vector<ItemId>                                         candidates;
     std::unordered_map<ItemId, uint32_t>                        channels;
-    std::vector<std::unordered_map<std::string, std::string>>   behavior_feature_vec;
+    std::vector<FeatureMap>                                     behavior_feature_vec;
     std::vector<std::vector<uint32_t>>                          feature_idx;
     std::vector<double>                                         rank_scores;
 

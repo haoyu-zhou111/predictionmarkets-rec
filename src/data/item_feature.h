@@ -8,7 +8,7 @@
 namespace predictionmarkets_rec {
 
 struct ItemFeatureData {
-    std::unordered_map<ItemId, std::unordered_map<std::string, std::string>> features;
+    std::unordered_map<ItemId, FeatureMap> features;
 };
 
 extern std::shared_ptr<const ItemFeatureData> g_item_feature;

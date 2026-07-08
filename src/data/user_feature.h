@@ -7,7 +7,7 @@
 
 namespace predictionmarkets_rec {
 
-using UserFeatureData = std::unordered_map<UserId, std::unordered_map<std::string, std::string>>;
+using UserFeatureData = std::unordered_map<UserId, FeatureMap>;
 
 extern UserFeatureData g_user_feature;
 

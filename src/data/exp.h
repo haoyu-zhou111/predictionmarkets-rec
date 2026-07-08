@@ -53,6 +53,6 @@ bool exp_config_init();
 
 void exp_config_reload();
 
-uint32_t get_user_group(UserId user_id);
+uint32_t get_user_group(AnchorId anchor_id);
 
 } // namespace predictionmarkets_rec

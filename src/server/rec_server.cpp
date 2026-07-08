@@ -46,7 +46,7 @@ public:
                 return;
             }
 
-            ctx.group_id            = get_user_group(ctx.user_id);
+            ctx.group_id            = get_user_group(ctx.anchor_id);
             ctx.timestamp           = req->timestamp();
             ctx.request_id          = req->request_id();
             ctx.session_id          = req->session_id();
@@ -59,7 +59,9 @@ public:
             ctx.item_feature    = std::atomic_load(&g_item_feature);
             ctx.exp_config      = std::atomic_load(&g_exp_merged_config);
 
-            fetcher::fetch_user_context(ctx);
+            // [本阶段暂不启用] 用户上下文（黑名单/曝光历史/关注/历史推荐）；redis 已通，
+            // bandit 阶段只用 item_pool 的 n/k，暂不拉用户侧 redis；恢复时放开
+            // fetcher::fetch_user_context(ctx);
 
             json result = rec::recommend(ctx);
 
