@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <ctime>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -94,12 +95,6 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     std::string response;
     curl_easy_setopt(g_curl, CURLOPT_URL,       url.c_str());
     curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &response);
-    // [本地测试专用·上线前删除] 本地经公网 test.predictionmarkets.org 抓 Ghost 会过 Cloudflare，
-    // libcurl 默认不发 User-Agent → 被 CF 拦成 HTML → json::parse 撞 '<'。加个 UA 绕过。
-    // 上测试/生产走内网直连 Ghost，无 CF，不需要此行，务必删除或注释。
-    curl_easy_setopt(g_curl, CURLOPT_USERAGENT,
-                     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36");
 
     struct curl_slist* headers = nullptr;
     std::string auth = "Authorization: Ghost " + jwt;
@@ -114,6 +109,17 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     if (res != CURLE_OK) {
         throw std::runtime_error(curl_easy_strerror(res));
     }
+
+    // [DEBUG·临时] 排查 Ghost 返回 HTML：打状态码/最终URL/长度/头部，完整体写 /tmp/ghost_resp.txt
+    long  code = 0;
+    char* eff  = nullptr;
+    curl_easy_getinfo(g_curl, CURLINFO_RESPONSE_CODE, &code);
+    curl_easy_getinfo(g_curl, CURLINFO_EFFECTIVE_URL, &eff);
+    ALOG(WARNING, "[DEBUG] ghost code=%ld eff_url=%s req_url=%s resp_len=%zu",
+         code, eff ? eff : "", url.c_str(), response.size());
+    ALOG(WARNING, "[DEBUG] ghost resp head: %.800s", response.c_str());
+    std::ofstream("/tmp/ghost_resp.txt", std::ios::trunc) << response;
+
     return response;
 }
 
