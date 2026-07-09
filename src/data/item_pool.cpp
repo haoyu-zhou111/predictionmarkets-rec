@@ -210,12 +210,21 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
 
     const std::string& imp_field = g_config.sync.bandit.impression_field;
     const std::string& clk_field = g_config.sync.bandit.click_field;
+    // [TRACE·临时] 验证 n/k 是真拉到了还是超时/缺失静默为 0：
+    // null=分片失败/超时，empty=key 不存在，have_stat=拿到 imp/clk 字段
+    size_t   null_cnt = 0, empty_cnt = 0, have_stat_cnt = 0;
+    uint64_t sum_exp = 0, sum_clk = 0;
+    std::string samples;
     for (size_t i = 0; i < ids.size(); i++) {
         const brpc::RedisReply* rp = batch.replies[i];
         if (rp == nullptr) {
+            null_cnt++;
             continue;                                     // 该命令所在分片失败/超时 → n/k 保持 0
         }
         auto fields = redis::parse<std::unordered_map<std::string, std::string>>(*rp);
+        if (fields.empty()) {
+            empty_cnt++;
+        }
 
         uint64_t exposure = 0;
         uint64_t click    = 0;
@@ -226,6 +235,15 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
         auto clk_iter = fields.find(clk_field);
         if (clk_iter != fields.end()) {
             try { click = std::stoull(clk_iter->second); } catch (...) {}
+        }
+        if (imp_iter != fields.end() || clk_iter != fields.end()) {
+            have_stat_cnt++;
+        }
+        sum_exp += exposure;
+        sum_clk += click;
+        if (samples.size() < 200 && (exposure > 0 || click > 0)) {
+            samples += ids[i] + "(n=" + std::to_string(exposure) +
+                       ",k=" + std::to_string(click) + ") ";
         }
 
         // 回填全量池与其 free 子集（免费池热门索引需要 free 池的 exposure/click）
@@ -240,6 +258,8 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
             free_iter->second.click    = click;
         }
     }
+    ALOG(INFO, "[TRACE] bandit stats: total=%lu null=%lu empty=%lu have_stat=%lu sum_n=%lu sum_k=%lu samples=[%s]",
+         ids.size(), null_cnt, empty_cnt, have_stat_cnt, sum_exp, sum_clk, samples.c_str());
 }
 
 // 热门索引：预算好每个 item 的 Wilson score 再按其降序排，exposure=0 不入。
