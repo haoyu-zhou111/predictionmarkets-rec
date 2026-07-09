@@ -4,6 +4,7 @@
 #include <brpc/redis_cluster.h>
 #include <brpc/controller.h>
 #include <brpc/callback.h>
+#include <bthread/countdown_event.h>
 
 #include "redis.h"
 #include "config.h"
@@ -14,6 +15,13 @@ namespace redis {
 
 namespace {
     brpc::RedisClusterChannel redis_cli;
+
+    // exec_batch 各分片异步完成回调：递减 CountdownEvent。
+    // RedisClusterChannel 异步只通过 done 回调通知完成，不走 call_id 生命周期，
+    // 故不能用 brpc::Join(call_id) 等待（会永久阻塞），改用 CountdownEvent。
+    void on_chunk_done(bthread::CountdownEvent* ev) {
+        ev->signal();
+    }
 }
 
 bool init() {
@@ -83,15 +91,14 @@ BatchReplies exec_batch(const std::vector<std::vector<std::string>>& commands, s
 
     const size_t num_chunks = (commands.size() + window - 1) / window;
     out.responses.reserve(num_chunks);
-    ALOG(INFO, "[TRACE] exec_batch: %lu commands, %lu chunks, window=%lu",
-         commands.size(), num_chunks, window);
 
     std::vector<brpc::RedisRequest>                reqs(num_chunks);
     std::vector<std::unique_ptr<brpc::Controller>> cntls;
-    std::vector<brpc::CallId>                      ids(num_chunks);
     cntls.reserve(num_chunks);
 
-    // 分片组装并异步发出：每片一个 CallMethod，跑在独立 bthread，片间互不阻塞
+    // 分片组装并异步发出：每片一个 CallMethod，各自跑在独立 bthread，片间并发。
+    // done 回调 signal 一次，CountdownEvent 计数从 num_chunks 减到 0 即全部完成。
+    bthread::CountdownEvent done_event(num_chunks);
     for (size_t c = 0; c < num_chunks; c++) {
         const size_t begin = c * window;
         const size_t end   = std::min(begin + window, commands.size());
@@ -102,18 +109,13 @@ BatchReplies exec_batch(const std::vector<std::vector<std::string>>& commands, s
         }
         cntls.emplace_back(new brpc::Controller);
         out.responses.emplace_back(new brpc::RedisResponse);
-        ids[c] = cntls[c]->call_id();
         redis_cli.CallMethod(nullptr, cntls[c].get(), &reqs[c],
-                             out.responses[c].get(), brpc::DoNothing());
-        ALOG(INFO, "[TRACE] exec_batch: dispatched chunk %lu/%lu", c + 1, num_chunks);
+                             out.responses[c].get(),
+                             brpc::NewCallback(on_chunk_done, &done_event));
     }
-    ALOG(INFO, "[TRACE] exec_batch: all %lu chunks dispatched, start joining", num_chunks);
 
-    // 等待所有分片完成
-    for (size_t c = 0; c < num_chunks; c++) {
-        brpc::Join(ids[c]);
-        ALOG(INFO, "[TRACE] exec_batch: joined chunk %lu/%lu", c + 1, num_chunks);
-    }
+    // 等待所有分片完成（各片 done 回调各 signal 一次；wait 返回时所有 response 已写完）
+    done_event.wait();
 
     // 按原始下标回填 reply 指针（各条命令非空、位置对齐）；失败分片其命令保持 nullptr，调用方判空
     for (size_t c = 0; c < num_chunks; c++) {
