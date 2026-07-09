@@ -62,7 +62,15 @@ void i2i_recall(Context& ctx, const std::string& channel, const RecallChannelCon
     }
 
     const auto& index = index_iter->second;
-    trigger_index_recall(ctx, channel, conf, ctx.click_list, index);
+
+    // click_list 旧→新，取最近的 trigger_count 次点击作 trigger（从后往前遍历，新→旧）
+    std::vector<ItemId> triggers;
+    size_t n = std::min(ctx.click_list.size(), static_cast<size_t>(conf.trigger_count));
+    triggers.reserve(n);
+    for (size_t i = 0; i < n; i++) {
+        triggers.emplace_back(ctx.click_list[ctx.click_list.size() - 1 - i]);
+    }
+    trigger_index_recall(ctx, channel, conf, triggers, index);
 }
 
 // cate_hot 通道暂停：需要 item_pool 提供「按分区的热门倒排索引」，本期未建（见 TODO），

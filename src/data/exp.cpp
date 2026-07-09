@@ -1,6 +1,7 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <fstream>
 #include <thread>
+#include <unordered_set>
 #include <nlohmann/json.hpp>
 #include <openssl/md5.h>
 
@@ -17,17 +18,30 @@ namespace {
 
 const std::string SALT = "_predictionmarkets";
 
+// 各召回通道实际消费的可选参数（见 recall.cpp）。parse_config 仅对集合内通道读取对应
+// 字段，避免对不适用通道误报 "param not found"。enable / topk 所有通道通用，不入集合。
+// - single_topk：trigger_index_recall（按 trigger 分桶取数）的通道使用
+// - trigger_count：有 trigger 的通路（i2i 取近 N 次点击、u2i 取近 N 个作者/关注）使用
+const std::unordered_set<std::string> SINGLE_TOPK_CHANNELS =
+    {"icf", "i2v", "swing", "cate_hot", "follow_u2i", "recent_u2i"};
+const std::unordered_set<std::string> TRIGGER_COUNT_CHANNELS =
+    {"icf", "i2v", "swing", "follow_u2i", "recent_u2i"};
+
 json exp_local_base;
-json exp_local_groups;    
+json exp_local_groups;
 
 void parse_config(const json& config_json, ExpConfig& exp_config) {
     auto& recall_config = get_json_obj(config_json, "recall");
     try {
         for (auto& [channel, config] : recall_config.items()) {
-            bool     enable        = get_json(config, "enable",        false);
-            uint32_t trigger_count = get_json(config, "trigger_count", 0u);
-            uint32_t single_topk   = get_json(config, "single_topk",   0u);
-            uint32_t topk          = get_json(config, "topk",          0u);
+            bool     enable        = get_json(config, "enable", false);
+            uint32_t topk          = get_json(config, "topk",   0u);
+            // single_topk / trigger_count 仅对实际消费它们的通道读取（见上方集合），
+            // 不适用通道不读、默认 0，避免刷 "param not found" 告警
+            uint32_t single_topk   = SINGLE_TOPK_CHANNELS.count(channel)
+                                         ? get_json(config, "single_topk",   0u) : 0u;
+            uint32_t trigger_count = TRIGGER_COUNT_CHANNELS.count(channel)
+                                         ? get_json(config, "trigger_count", 0u) : 0u;
             exp_config.recall.channel_config.emplace(channel, RecallChannelConfig{
                 enable,
                 trigger_count,
