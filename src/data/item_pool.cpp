@@ -200,7 +200,8 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
     commands.reserve(all.items.size());
     ids.reserve(all.items.size());
     for (const auto& [id, item] : all.items) {
-        commands.push_back({"hgetall", g_config.sync.bandit.post_stat_key_prefix + id});
+        // 上游 stat key 形如 tracking:rec_sys:post:{<post_id>}，id 需包进花括号（cluster hash tag）
+        commands.push_back({"hgetall", g_config.sync.bandit.post_stat_key_prefix + "{" + id + "}"});
         ids.emplace_back(id);
     }
 
