@@ -217,7 +217,10 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
 
     // cluster 下一个 request 会被拆成多条串行子调用，上千 key 串行会超一秒；
     // 按 batch_window 分片、多片异步并发下发（详见 redis::exec_batch）。
+    ALOG(INFO, "[TRACE] fill_bandit_stats: %lu hgetall commands, window=%u, calling exec_batch",
+         commands.size(), g_config.redis.batch_window);
     redis::BatchReplies batch = redis::exec_batch(commands, g_config.redis.batch_window);
+    ALOG(INFO, "[TRACE] fill_bandit_stats: exec_batch returned");
 
     const std::string& imp_field = g_config.sync.bandit.impression_field;
     const std::string& clk_field = g_config.sync.bandit.click_field;
@@ -302,9 +305,12 @@ void build_index(ItemPool& pool) {
 // 栈上构建免费池与全量池：拉取 Ghost post → 回填 bandit n/k → 各自建索引
 void build_pools(ItemPool& all, ItemPool& free) {
     fetch_ghost_posts(all, free);
+    ALOG(INFO, "[TRACE] fetch_ghost_posts done, all=%lu free=%lu", all.items.size(), free.items.size());
     fill_bandit_stats(all, free);
+    ALOG(INFO, "[TRACE] fill_bandit_stats done");
     build_index(all);
     build_index(free);
+    ALOG(INFO, "[TRACE] build_index done");
 }
 
 } // namespace

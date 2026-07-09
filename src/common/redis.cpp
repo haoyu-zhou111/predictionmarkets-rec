@@ -83,6 +83,8 @@ BatchReplies exec_batch(const std::vector<std::vector<std::string>>& commands, s
 
     const size_t num_chunks = (commands.size() + window - 1) / window;
     out.responses.reserve(num_chunks);
+    ALOG(INFO, "[TRACE] exec_batch: %lu commands, %lu chunks, window=%lu",
+         commands.size(), num_chunks, window);
 
     std::vector<brpc::RedisRequest>                reqs(num_chunks);
     std::vector<std::unique_ptr<brpc::Controller>> cntls;
@@ -103,11 +105,14 @@ BatchReplies exec_batch(const std::vector<std::vector<std::string>>& commands, s
         ids[c] = cntls[c]->call_id();
         redis_cli.CallMethod(nullptr, cntls[c].get(), &reqs[c],
                              out.responses[c].get(), brpc::DoNothing());
+        ALOG(INFO, "[TRACE] exec_batch: dispatched chunk %lu/%lu", c + 1, num_chunks);
     }
+    ALOG(INFO, "[TRACE] exec_batch: all %lu chunks dispatched, start joining", num_chunks);
 
     // 等待所有分片完成
     for (size_t c = 0; c < num_chunks; c++) {
         brpc::Join(ids[c]);
+        ALOG(INFO, "[TRACE] exec_batch: joined chunk %lu/%lu", c + 1, num_chunks);
     }
 
     // 按原始下标回填 reply 指针（各条命令非空、位置对齐）；失败分片其命令保持 nullptr，调用方判空
