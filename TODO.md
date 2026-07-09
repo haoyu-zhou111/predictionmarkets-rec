@@ -23,6 +23,8 @@
   - `feature.cpp`：去掉 `ctx.item_feature->features` 查询（LR 特征工程待重设计，当前 bandit 阶段不调用）。
   - `config.h/cpp`：删除 `data_path.item_feature` 和 `sync.item_feature_interval_ms`。
 - **分区热门索引（cate_hot / tag_hot）**：本期未建。item_pool 现已在 Item 上记录 tag id 列表（`cates`），后续在 item_pool 同步时按 tag 分区构建热门倒排索引（Wilson score 排序，exposure=0 不入），并恢复 recall 的 `cate_hot` 通道（当前函数体与分发表条目均已注释）。**免费池与全量池各建一份**（`g_free_pool` / `g_all_pool` 内各加一个分区热门索引，与现有 `hot_items`/`new_items` 一致）。
+- **生产 redis 写入 exp 配置 key**：`config.prod.conf` 的 `exp.redis_key` 已对齐为 `predictionmarkets:exp_config`，但生产 redis 集群里该 key 尚未写入。上线前需由管 prod 的同学写入（至少一份空配置 `{"base":{},"group_0":{},...,"group_9":{}}`），否则服务起来会走 empty fallback 并刷 "remote exp config empty" warning（功能不受影响）。测试环境已写好。
+- **user_context redis key 加命名空间前缀**：exp key 已用 `predictionmarkets:` 前缀，但 `user_context` 的 `user_black:` / `user_history:` / `user_followed:` / `user_published:` 仍是老名字、无前缀。这些 key 当前未实际使用，等接入用户上下文时一并统一加前缀（config + 上游写入方约定）。
 - **recent_u2i / recent_authors 填充顺序**：`click_list` 为旧→新，`fetcher.cpp` 构建 `recent_authors_vec` 时从前往后（旧→新）遍历，`recent_u2i_prepare` 又取前 `trigger_count` 个，结果取到的是**最旧**的作者，与 "recent" 语义相反。i2i 召回本次已改为从后往前取最近点击（见 `i2i_recall`），recent_u2i 侧应对齐为"取最近作者"（改遍历方向或取尾部）。当前 `recent_u2i` enable=false，不影响线上，不急。
 - **多 tag 打散**：rerank 打散当前只用 Item 的 `cates`/`authors` 列表首元素（主 tag/主 author）作键，后续可扩展为多 tag/多作者的打散语义。
 - **时效（新内容）召回通道**：item_pool 已建 `new_items` 索引（created_at 降序），但暂无召回通道读它。后续仿 `global_hot_recall` 加一个新内容召回通道（读 `ctx.item_pool->new_items`），本期未做。当前召回只开 `global_hot`。
