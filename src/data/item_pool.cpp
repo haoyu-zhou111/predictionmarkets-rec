@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <ctime>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -109,16 +108,6 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     if (res != CURLE_OK) {
         throw std::runtime_error(curl_easy_strerror(res));
     }
-
-    // [DEBUG·临时] 排查 Ghost 返回 HTML：打状态码/最终URL/长度/头部，完整体写 /tmp/ghost_resp.txt
-    long  code = 0;
-    char* eff  = nullptr;
-    curl_easy_getinfo(g_curl, CURLINFO_RESPONSE_CODE, &code);
-    curl_easy_getinfo(g_curl, CURLINFO_EFFECTIVE_URL, &eff);
-    ALOG(WARNING, "[DEBUG] ghost code=%ld eff_url=%s req_url=%s resp_len=%zu",
-         code, eff ? eff : "", url.c_str(), response.size());
-    ALOG(WARNING, "[DEBUG] ghost resp head: %.800s", response.c_str());
-    std::ofstream("/tmp/ghost_resp.txt", std::ios::trunc) << response;
 
     return response;
 }
