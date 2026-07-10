@@ -8,8 +8,7 @@
 namespace predictionmarkets_rec {
 
 struct ServerConf {
-    int port       = 8080;
-    int worker_num = 8;
+    int port = 8080;
 };
 
 struct RedisConf {

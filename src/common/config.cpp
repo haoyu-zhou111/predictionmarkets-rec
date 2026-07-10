@@ -32,7 +32,6 @@ bool config_load(const std::string& conf_path) {
         auto bandit                                 = get_json_obj(sync, "bandit");
 
         g_config.server.port                        = get_json(server, "port", 8080);
-        g_config.server.worker_num                  = get_json(server, "worker_num", 8);
 
         g_config.redis.nodes                        = get_json(redis, "nodes", std::vector<std::string>{});
         g_config.redis.password                     = get_json(redis, "password", std::string{""});
