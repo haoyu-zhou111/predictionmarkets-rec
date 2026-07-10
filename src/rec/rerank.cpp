@@ -204,7 +204,7 @@ void rerank(Context& ctx) {
         }
 
         ItemId& chosen_item = ctx.candidates[chosen];
-        ALOG(INFO, "[rerank] pos=%zu item=%s score=%.4f penalty=0x%x rules=%s",
+        ALOG(DEBUG, "[rerank] pos=%zu item=%s score=%.4f penalty=0x%x rules=%s",
              i, chosen_item.c_str(), ctx.rank_scores[chosen], best_pen,
              penalty_rules(best_pen).c_str());
         if (rerank_config.enable) {
