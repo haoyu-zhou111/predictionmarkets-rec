@@ -107,10 +107,11 @@ bool init() {
 void start() {
     brpc::Server server;
     brpc::ServerOptions options;
-    // 不覆盖 options.num_threads：brpc 默认取 #core+1，Start 时还会 +usercode_backup 再
-    // setconcurrency_by_tag；bthread 并发只增不减，设成比默认小（如 worker_num=4→实际请求
-    // 4+1=5 < 9）会触发 "concurrency should be larger than old" warning 且不生效。故用默认；
-    // 如需真正限制/调整线程数，应在 main() 启动早期设 gflag -bthread_concurrency。
+    // num_threads=0 → 跳过 brpc Start 里的 setconcurrency。ServerOptions 默认 num_threads=
+    // #core+1（低核机器如 4 核=5）可能小于 bthread 全局默认并发（init 期间 brpc 后台 bthread
+    // 已把并发抬到 9），Start 想设回更小值会触发 "concurrency should be larger than old"
+    // warning 且不生效。设 0 跳过该调用、沿用现有并发；如需调整用 gflag -bthread_concurrency（只增不减）。
+    options.num_threads = 0;
 
     server.AddService(new RecommendServiceImpl, brpc::SERVER_OWNS_SERVICE);
 
