@@ -1,5 +1,4 @@
 #include <brpc/server.h>
-#include <bthread/bthread.h>
 #include <nlohmann/json.hpp>
 
 #include "rec.pb.h"
@@ -108,11 +107,10 @@ bool init() {
 void start() {
     brpc::Server server;
     brpc::ServerOptions options;
-    // bthread 全局并发只增不减：worker_num 小于当前并发（默认=#cpu）时，brpc 会打
-    // "concurrency should be larger than old concurrency" warning 且不生效；仅需上调时才设
-    if (g_config.server.worker_num > bthread_getconcurrency()) {
-        options.num_threads = g_config.server.worker_num;
-    }
+    // 不覆盖 options.num_threads：brpc 默认取 #core+1，Start 时还会 +usercode_backup 再
+    // setconcurrency_by_tag；bthread 并发只增不减，设成比默认小（如 worker_num=4→实际请求
+    // 4+1=5 < 9）会触发 "concurrency should be larger than old" warning 且不生效。故用默认；
+    // 如需真正限制/调整线程数，应在 main() 启动早期设 gflag -bthread_concurrency。
 
     server.AddService(new RecommendServiceImpl, brpc::SERVER_OWNS_SERVICE);
 
@@ -121,7 +119,7 @@ void start() {
         return;
     }
 
-    ALOG(INFO, "rec_server started port=%d worker=%d", g_config.server.port, g_config.server.worker_num);
+    ALOG(INFO, "rec_server started port=%d", g_config.server.port);
 
     server.RunUntilAskedToQuit();
 }
