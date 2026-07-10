@@ -22,7 +22,7 @@ struct LogFile {
     long            hour_bucket = -1;   // YYYYMMDDHH，-1 表示尚未打开
 };
 
-// 自定义 LogSink：按 severity 把日志独占写入 info/warning/error 三个文件，按小时切分。
+// 自定义 LogSink：按 severity 把日志独占写入 debug/info/warning/error 四个文件，按小时切分。
 // brpc 对 SetLogSink 注册的 sink 始终同步调用，且 OnLogMessage 会被多线程并发调用，故每槽各持一把锁。
 class FileLogSink : public logging::LogSink {
 public:
@@ -30,6 +30,7 @@ public:
         if (!dir_.empty() && dir_.back() == '/') {
             dir_.pop_back();
         }
+        debug_.prefix   = "debug";
         info_.prefix    = "info";
         warning_.prefix = "warning";
         error_.prefix   = "error";
@@ -85,10 +86,13 @@ public:
     }
 
 private:
-    // DEBUG(==INFO)/VERBOSE/INFO/NOTICE → info；WARNING → warning；ERROR/FATAL → error
+    // VERBOSE/DEBUG（Release 下 severity <INFO）→ debug；INFO/NOTICE → info；
+    // WARNING → warning；ERROR/FATAL → error。
+    // 注：Debug 构建下 LOG(DEBUG)==INFO(0)，无法区分，会落到 info 文件。
     LogFile& pick(int severity) {
         if (severity >= logging::BLOG_ERROR)   return error_;
         if (severity == logging::BLOG_WARNING) return warning_;
+        if (severity <  logging::BLOG_INFO)    return debug_;
         return info_;
     }
 
@@ -97,10 +101,12 @@ private:
         if (severity == logging::BLOG_ERROR)   return "ERROR";
         if (severity == logging::BLOG_WARNING) return "WARNING";
         if (severity == logging::BLOG_NOTICE)  return "NOTICE";
+        if (severity <  logging::BLOG_INFO)    return "DEBUG";
         return "INFO";
     }
 
     std::string dir_;
+    LogFile     debug_;
     LogFile     info_;
     LogFile     warning_;
     LogFile     error_;
