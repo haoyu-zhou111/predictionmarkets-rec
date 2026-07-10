@@ -133,6 +133,14 @@ void fetch_user_context(Context& ctx) {
     // 历史推荐读取（当前唯一命令，reply(0)）：全量入 rec_exposed_set 做曝光软降权，最近 topk 作跨刷打散种子
     try {
         std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(0));
+
+        std::string hist_dump;
+        for (const auto& h : hist) {
+            hist_dump += h;
+            hist_dump += ' ';
+        }
+        ALOG(DEBUG, "rec history raw: count=%zu items=[%s]", hist.size(), hist_dump.c_str());
+
         ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
         hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
         ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
