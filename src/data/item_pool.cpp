@@ -310,7 +310,7 @@ bool item_pool_load() {
         std::atomic_store(&g_all_pool,  std::shared_ptr<const ItemPool>(all_ptr));
         std::atomic_store(&g_free_pool, std::shared_ptr<const ItemPool>(free_ptr));
 
-        ALOG(DEBUG, "item_pool load successfully, all=%lu free=%lu",
+        ALOG(INFO, "item_pool load successfully, all=%lu free=%lu",
              all_ptr->items.size(), free_ptr->items.size());
         return true;
     } catch (const std::exception& e) {

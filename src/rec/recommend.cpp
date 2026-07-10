@@ -60,6 +60,8 @@ void write_rec_history(Context& ctx) {
         {"LTRIM",  key, "0", std::to_string(g_config.rec_history.max_len - 1)},
         {"EXPIRE", key, std::to_string(g_config.rec_history.ttl_sec)}
     }, resp);
+
+    ALOG(DEBUG, "write rec history: key=%s pushed=%zu", key.c_str(), ctx.final_results.size());
 }
 
 } // namespace
@@ -91,6 +93,11 @@ json recommend(Context& ctx) {
     }
     rerank(ctx);
     write_rec_history(ctx);   // 本次返回结果写回 anchor 推荐历史，供下次曝光软降权与跨刷打散
+
+    ALOG(INFO, "[req] request_id=%s anchor=%s group=%u refresh=%u topk=%u cand=%zu final=%zu bandit=%d",
+         ctx.request_id.c_str(), ctx.anchor_id.c_str(), ctx.group_id, ctx.session_refresh_num,
+         ctx.topk, ctx.candidates.size(), ctx.final_results.size(),
+         ctx.exp_config->groups[ctx.group_id].rank.bandit_enable);
     return fill_response(ctx);
 }
 
