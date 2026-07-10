@@ -77,13 +77,13 @@ bool init() {
 }
 
 void fetch_user_context(Context& ctx) {
-    const auto& uc = g_config.user_context;
+    [[maybe_unused]] const auto& uc = g_config.user_context;
     std::vector<std::vector<std::string>> commands = {
-        {"smembers", uc.blacklist_redis_key + ctx.anchor_id},                      // black list
-        {"lrange",   uc.history_redis_key  + ctx.anchor_id,      "0", "-1"},       // history
-        {"lrange",   uc.followed_redis_key + ctx.anchor_id,      "0", "-1"},       // followed
-        // [本阶段暂不启用] 历史推荐读取；redis 已通，本期不拉 rec_history，恢复时放开
-        // {"lrange",   g_config.rec_history.key_prefix + ctx.anchor_id, "0", "-1"},  // rec history（软降权，不过滤）
+        // [暂不启用] 黑名单/曝光历史/关注；恢复时放开这三条并把下方各 reply 索引顺延
+        // {"smembers", uc.blacklist_redis_key + ctx.anchor_id},                      // black list
+        // {"lrange",   uc.history_redis_key  + ctx.anchor_id,      "0", "-1"},       // history
+        // {"lrange",   uc.followed_redis_key + ctx.anchor_id,      "0", "-1"},       // followed
+        {"lrange",   g_config.rec_history.key_prefix + ctx.anchor_id, "0", "-1"},  // rec history（软降权，不过滤）
     };
 
     brpc::RedisResponse resp;
@@ -92,55 +92,55 @@ void fetch_user_context(Context& ctx) {
         return;
     }
 
-    try {
-        ctx.blacklist_set = redis::parse<std::unordered_set<std::string>>(resp.reply(0));
-        ALOG(INFO, "get user black list success, length: %lu", ctx.blacklist_set.size());
-    } catch (const std::exception& e) {
-        ALOG(ERROR, "get user black list failed: %s", e.what());
-    }
-
-    try {
-        std::vector<std::string> events = redis::parse<std::vector<std::string>>(resp.reply(1));
-        ALOG(INFO, "get user history success, length: %lu", events.size());
-        
-        for (const std::string& ev : events) {
-            try {
-                json j = json::parse(ev);
-                auto& item = j["item_id"];
-                ctx.show_set.insert(item);
-                ctx.show_list.emplace_back(item);
-            
-                if (j["clicked"]) {
-                    ctx.click_list.emplace_back(item);
-                }
-            } catch (const std::exception& ex) {
-                ALOG(WARNING, "parse events %s failed: %s", ev.c_str(), ex.what());
-                continue;
-            }
-        }
-    } catch (const std::exception& e) {
-        ALOG(ERROR, "get user history failed: %s", e.what());
-    }
-
-    try {
-        ctx.followed_list = redis::parse<std::vector<std::string>>(resp.reply(2));
-        ALOG(INFO, "get user followed success, length: %lu", ctx.followed_list.size());
-    } catch (const std::exception& e) {
-        ALOG(ERROR, "get user followed failed: %s", e.what());
-    }
-
-    // [本阶段暂不启用] 历史推荐读取；redis 已通，本期不拉 rec_history，恢复时放开
-    // rec_exposed_set / rec_history_list 保持空，rerank 的曝光软降权与跨刷打散自然不生效
+    // [暂不启用] 黑名单/曝光历史/关注解析；与上方三条命令一同放开，放开时 reply 索引顺延
     // try {
-    //     std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(3));
-    //     ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
-    //     hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
-    //     ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
-    //     ALOG(INFO, "get rec history success, exposed=%lu seed=%lu",
-    //          ctx.rec_exposed_set.size(), ctx.rec_history_list.size());
+    //     ctx.blacklist_set = redis::parse<std::unordered_set<std::string>>(resp.reply(0));
+    //     ALOG(INFO, "get user black list success, length: %lu", ctx.blacklist_set.size());
     // } catch (const std::exception& e) {
-    //     ALOG(ERROR, "get rec history failed: %s", e.what());
+    //     ALOG(ERROR, "get user black list failed: %s", e.what());
     // }
+    //
+    // try {
+    //     std::vector<std::string> events = redis::parse<std::vector<std::string>>(resp.reply(1));
+    //     ALOG(INFO, "get user history success, length: %lu", events.size());
+    //
+    //     for (const std::string& ev : events) {
+    //         try {
+    //             json j = json::parse(ev);
+    //             auto& item = j["item_id"];
+    //             ctx.show_set.insert(item);
+    //             ctx.show_list.emplace_back(item);
+    //
+    //             if (j["clicked"]) {
+    //                 ctx.click_list.emplace_back(item);
+    //             }
+    //         } catch (const std::exception& ex) {
+    //             ALOG(WARNING, "parse events %s failed: %s", ev.c_str(), ex.what());
+    //             continue;
+    //         }
+    //     }
+    // } catch (const std::exception& e) {
+    //     ALOG(ERROR, "get user history failed: %s", e.what());
+    // }
+    //
+    // try {
+    //     ctx.followed_list = redis::parse<std::vector<std::string>>(resp.reply(2));
+    //     ALOG(INFO, "get user followed success, length: %lu", ctx.followed_list.size());
+    // } catch (const std::exception& e) {
+    //     ALOG(ERROR, "get user followed failed: %s", e.what());
+    // }
+
+    // 历史推荐读取（当前唯一命令，reply(0)）：全量入 rec_exposed_set 做曝光软降权，最近 topk 作跨刷打散种子
+    try {
+        std::vector<std::string> hist = redis::parse<std::vector<std::string>>(resp.reply(0));
+        ctx.rec_exposed_set.insert(hist.begin(), hist.end());   // 全量：曝光软降权用
+        hist.resize(std::min(static_cast<size_t>(ctx.topk), hist.size()));
+        ctx.rec_history_list = std::move(hist);                 // 最近 topk（新→旧）：跨刷打散种子
+        ALOG(DEBUG, "get rec history success, exposed=%lu seed=%lu",
+             ctx.rec_exposed_set.size(), ctx.rec_history_list.size());
+    } catch (const std::exception& e) {
+        ALOG(ERROR, "get rec history failed: %s", e.what());
+    }
 
 
     for (auto& item : ctx.click_list) {

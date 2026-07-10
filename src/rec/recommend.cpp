@@ -43,7 +43,7 @@ json fill_response(Context& ctx) {
 }
 
 // 把本次结果写入 anchor 的推荐历史（LPUSH 最新 → LTRIM 保留最近 N 条 → EXPIRE），供下次软降权
-[[maybe_unused]] void write_rec_history(Context& ctx) {
+void write_rec_history(Context& ctx) {
     if (ctx.anchor_id.empty() || ctx.final_results.empty()) {
         return;
     }
@@ -90,8 +90,7 @@ json recommend(Context& ctx) {
         rank(ctx);
     }
     rerank(ctx);
-    // [本阶段暂不启用] 历史推荐写回；redis 已通，本期不写 rec_history，恢复时放开
-    // write_rec_history(ctx);
+    write_rec_history(ctx);   // 本次返回结果写回 anchor 推荐历史，供下次曝光软降权与跨刷打散
     return fill_response(ctx);
 }
 
