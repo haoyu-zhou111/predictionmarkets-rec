@@ -13,6 +13,7 @@ const uint32_t CHANNEL_TYPE_COUNT = 4;
 const std::unordered_map<std::string, uint32_t> CHANNEL = {
     {"global_hot",   0},
     {"cate_hot",     0},
+    {"full",         0},
     
     {"icf",          1},
     {"i2v",          1},
