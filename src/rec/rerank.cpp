@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 #include "rerank.h"
 #include "common/log.h"
@@ -21,6 +22,24 @@ enum RerankRule : uint32_t {
 
 constexpr uint32_t penalty_bit(RerankRule rule) {
     return 1u << rule;
+}
+
+// 把 penalty 位掩码还原成命中的规则名（弱→强），无命中返回 "-"，仅供日志诊断
+std::string penalty_rules(uint32_t pen) {
+    if (pen == 0) {
+        return "-";
+    }
+    static const char* const names[] = {"scatter", "recency", "exposed", "op"};
+    std::string s;
+    for (uint32_t r = RULE_SCATTER; r <= RULE_OP; r++) {
+        if (pen & penalty_bit(static_cast<RerankRule>(r))) {
+            if (!s.empty()) {
+                s += "|";
+            }
+            s += names[r];
+        }
+    }
+    return s;
 }
 
 void rerank(Context& ctx) {
@@ -185,6 +204,9 @@ void rerank(Context& ctx) {
         }
 
         ItemId& chosen_item = ctx.candidates[chosen];
+        ALOG(INFO, "[rerank] pos=%zu item=%s score=%.4f penalty=0x%x rules=%s",
+             i, chosen_item.c_str(), ctx.rank_scores[chosen], best_pen,
+             penalty_rules(best_pen).c_str());
         if (rerank_config.enable) {
             if (rerank_config.author_gap > 0) {
                 auto author_iter = author_map.find(chosen_item);
