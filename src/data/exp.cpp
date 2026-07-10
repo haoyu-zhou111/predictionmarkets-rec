@@ -161,7 +161,7 @@ bool merge_redis_config() {
             parse_config(final_json, exp_final.groups[i]);
         }
 
-        ALOG(INFO, "load redis exp config success");
+        ALOG(DEBUG, "load redis exp config success");
         std::atomic_store(&g_exp_merged_config, std::make_shared<const ExpConfigData>(exp_final));
         return true;
     } catch (const std::exception& e) {
@@ -204,7 +204,7 @@ void exp_config_reload() {
     if (!merge_redis_config()) {
         ALOG(WARNING, "exp config reload failed, using old exp_config");
     } else {
-        ALOG(INFO, "exp config reload success");
+        ALOG(DEBUG, "exp config reload success");
     }
 }
 

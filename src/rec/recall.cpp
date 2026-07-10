@@ -254,7 +254,7 @@ void recall(Context& ctx) {
     }
 
     if (commands.empty()) {
-        ALOG(INFO, "no redis recall cmds, skip redis fetch and parse");
+        ALOG(DEBUG, "no redis recall cmds, skip redis fetch and parse");
     } else {
         brpc::RedisResponse resp;
         redis::exec(commands, resp);

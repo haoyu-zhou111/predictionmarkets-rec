@@ -1,4 +1,5 @@
 #include <brpc/server.h>
+#include <bthread/bthread.h>
 #include <nlohmann/json.hpp>
 
 #include "rec.pb.h"
@@ -107,7 +108,11 @@ bool init() {
 void start() {
     brpc::Server server;
     brpc::ServerOptions options;
-    options.num_threads = g_config.server.worker_num;
+    // bthread 全局并发只增不减：worker_num 小于当前并发（默认=#cpu）时，brpc 会打
+    // "concurrency should be larger than old concurrency" warning 且不生效；仅需上调时才设
+    if (g_config.server.worker_num > bthread_getconcurrency()) {
+        options.num_threads = g_config.server.worker_num;
+    }
 
     server.AddService(new RecommendServiceImpl, brpc::SERVER_OWNS_SERVICE);
 
