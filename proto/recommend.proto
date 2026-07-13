@@ -5,14 +5,14 @@ package predictionmarkets_rec;
 option cc_generic_services = true;
 
 message RecRequest {
-    string user_id = 1;
-    int64 timestamp = 2;
-    string request_id = 3;
-    string session_id = 4;
-    int32 session_refresh_num = 5;
-    int32 topk = 6;
-    bool is_paid_user = 8;
-    string device_id = 9;
+    string user_id             = 1;
+    string device_id           = 2;
+    int64  timestamp           = 3;
+    string request_id          = 4;
+    string session_id          = 5;
+    int32  session_refresh_num = 6;
+    int32  topk                = 7;
+    bool   is_paid_user        = 8;
 }
 
 message FeedItem {
@@ -31,14 +31,14 @@ message RecResponse {
         repeated FeedItem feed_list = 2;
 
         message ExtInfo {
-            bool has_more = 1;
-            string strategy = 2;
+            string strategy         = 1;
+            string callback_feature = 2;   // 预留：后续部分线上特征经此回传，目前留空
         }
         ExtInfo ext_info = 3;
     }
     Data data = 5;
 }
 
-service RecommendService {
+service predictionmarketsRecommend {
     rpc recommend(RecRequest) returns (RecResponse);
 }

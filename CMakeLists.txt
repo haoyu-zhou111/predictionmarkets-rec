@@ -19,7 +19,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 find_package(CURL REQUIRED)
 find_package(Protobuf REQUIRED)
 
-set(PROTO_FILE ${CMAKE_SOURCE_DIR}/src/proto/rec.proto)
+set(PROTO_FILE ${CMAKE_SOURCE_DIR}/proto/recommend.proto)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILE})
 

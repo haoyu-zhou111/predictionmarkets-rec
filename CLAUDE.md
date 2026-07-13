@@ -35,8 +35,8 @@ src/
 ├── data/           # 内存数据结构（item pool、item/user feature、模型、i2i 索引、实验配置）
 ├── fetcher/        # 后台同步线程、用户上下文拉取
 ├── rec/            # 推荐主流程（recall、feature、rank、rerank、filter、context）
-├── server/         # brpc 服务入口
-└── proto/          # Protobuf 协议定义
+└── server/         # brpc 服务入口
+proto/              # Protobuf 协议定义（对外接口契约，置于顶层便于外部消费）
 conf/
 ├── config.conf     # 服务配置
 └── exp.conf        # 实验分组配置（本地部分）

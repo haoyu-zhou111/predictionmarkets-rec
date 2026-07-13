@@ -1,7 +1,7 @@
 #include <brpc/server.h>
 #include <nlohmann/json.hpp>
 
-#include "rec.pb.h"
+#include "recommend.pb.h"
 #include "rec_server.h"
 #include "common/config.h"
 #include "common/log.h"
@@ -20,7 +20,7 @@ using json = nlohmann::json;
 
 namespace {
 
-class RecommendServiceImpl : public predictionmarkets_rec::RecommendService {
+class RecommendServiceImpl : public predictionmarkets_rec::predictionmarketsRecommend {
 public:
     void recommend(google::protobuf::RpcController* cntl,
                     const RecRequest* req,
@@ -80,8 +80,8 @@ public:
             }
 
             auto ext = data->mutable_ext_info();
-            ext->set_has_more(result["data"]["ext_info"]["has_more"]);
             ext->set_strategy(result["data"]["ext_info"]["strategy"]);
+            ext->set_callback_feature(result["data"]["ext_info"]["callback_feature"]);
         } catch (const std::exception& e) {
             ALOG(ERROR, "recommend exception, request_id: %s, error: %s", req->request_id().c_str(), e.what());
             res->set_code(500);

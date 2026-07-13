@@ -35,8 +35,8 @@ json fill_response(Context& ctx) {
             {"current_refresh_num", ctx.session_refresh_num},
             {"feed_list", feed_array},
             {"ext_info", {
-                {"has_more", ctx.has_more},
-                {"strategy", "base"}
+                {"strategy", "base"},
+                {"callback_feature", ""}
             }}
         }}
     };
@@ -77,8 +77,8 @@ json recommend(Context& ctx) {
                 {"current_refresh_num", ctx.session_refresh_num},
                 {"feed_list", json::array()},
                 {"ext_info", {
-                    {"has_more", true},
-                    {"strategy", "base"}
+                    {"strategy", "base"},
+                    {"callback_feature", ""}
                 }}
             }}
         };
