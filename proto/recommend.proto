@@ -16,8 +16,9 @@ message RecRequest {
 }
 
 message FeedItem {
-    string item_id = 1;
-    float score = 2;
+    string item_id          = 1;
+    float  score            = 2;
+    string callback_feature = 3;   // 预留：该 item 的线上特征经此回传，目前留空
 }
 
 message RecResponse {
@@ -31,14 +32,13 @@ message RecResponse {
         repeated FeedItem feed_list = 2;
 
         message ExtInfo {
-            string strategy         = 1;
-            string callback_feature = 2;   // 预留：后续部分线上特征经此回传，目前留空
+            string strategy = 1;
         }
         ExtInfo ext_info = 3;
     }
     Data data = 5;
 }
 
-service predictionmarketsRecommend {
+service PredictionMarketsRecommend {
     rpc recommend(RecRequest) returns (RecResponse);
 }

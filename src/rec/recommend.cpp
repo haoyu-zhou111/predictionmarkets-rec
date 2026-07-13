@@ -22,7 +22,8 @@ json fill_response(Context& ctx) {
     for (const auto& p : ctx.final_results) {
         feed_array.push_back({
             {"item_id", p.first},
-            {"score", ctx.rank_scores[p.second]}
+            {"score", ctx.rank_scores[p.second]},
+            {"callback_feature", ""}   // 预留：后续填该 item 的线上特征
         });
     }
 
@@ -35,8 +36,7 @@ json fill_response(Context& ctx) {
             {"current_refresh_num", ctx.session_refresh_num},
             {"feed_list", feed_array},
             {"ext_info", {
-                {"strategy", "base"},
-                {"callback_feature", ""}
+                {"strategy", "base"}
             }}
         }}
     };
@@ -77,8 +77,7 @@ json recommend(Context& ctx) {
                 {"current_refresh_num", ctx.session_refresh_num},
                 {"feed_list", json::array()},
                 {"ext_info", {
-                    {"strategy", "base"},
-                    {"callback_feature", ""}
+                    {"strategy", "base"}
                 }}
             }}
         };

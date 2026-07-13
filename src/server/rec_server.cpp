@@ -20,7 +20,7 @@ using json = nlohmann::json;
 
 namespace {
 
-class RecommendServiceImpl : public predictionmarkets_rec::predictionmarketsRecommend {
+class RecommendServiceImpl : public predictionmarkets_rec::PredictionMarketsRecommend {
 public:
     void recommend(google::protobuf::RpcController* cntl,
                     const RecRequest* req,
@@ -77,11 +77,11 @@ public:
                 auto new_feed = data->add_feed_list();
                 new_feed->set_item_id(feed["item_id"]);
                 new_feed->set_score(feed["score"]);
+                new_feed->set_callback_feature(feed["callback_feature"]);
             }
 
             auto ext = data->mutable_ext_info();
             ext->set_strategy(result["data"]["ext_info"]["strategy"]);
-            ext->set_callback_feature(result["data"]["ext_info"]["callback_feature"]);
         } catch (const std::exception& e) {
             ALOG(ERROR, "recommend exception, request_id: %s, error: %s", req->request_id().c_str(), e.what());
             res->set_code(500);
