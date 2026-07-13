@@ -2,32 +2,21 @@
 
 记录待办事项，只记需要做什么，具体方案到时再评估。
 
-- **推荐结果去重记录**：将每次返回给用户的推荐结果写入 redis，下次请求读取并在一段时间窗口内做去重（处理延迟曝光）。涉及写、读、去重时的使用、数据结构设计。
-- **日志重定向到文件**：当前 `main.cpp` 中日志初始化被注释，日志未落盘，需要接入文件输出。
+## 阶段二（有特征 / 模型之后）
+
 - **特征生产**：context 特征（`context_feature_map`）、行为特征等当前未生产，待数据就绪后接入。
 - **曝光与点击拆分为两条 redis**：当前 `user_history` 一条列表内混用曝光与 `clicked` 字段，计划拆成独立的曝光列表和点击列表，曝光用于已曝光过滤、点击用于 i2i 召回 trigger。涉及上游约定、新增 config、`fetch_user_context` 读取与解析调整。（注：当前 `fetcher.cpp` 中 `if (j["clicked"])` 是临时写法，依赖该字段为 JSON 布尔，拆分后一并替换。）
-- **item pool 改接 Ghost Admin API**：设计已定，待实现。
-  - **Item 结构**：字段 `id`、`tags`（id 列表，待明日确认）、`authors`（id 列表，待明日确认）、`published_at`（int64_t Unix 秒戳）、`updated_at`（int64_t）、`status`（enum: PUBLISHED/DRAFT/UNKNOWN）、`visibility`（enum: PUBLIC/MEMBERS/PAID/UNKNOWN）、`n`、`k`（int64_t，bandit 用）。
-  - **双 pool**：`visibility == PAID` 进 `paid_items`，其余进 `free_items`；`status != PUBLISHED` 跳过不入池。两个 pool 均为 `unordered_map<ItemId, Item>`。
-  - **Ghost API 接入**：每次调用前用 Admin API Key（id + secret）生成短期 HS256 JWT；分页拉取，每页 100 条，循环直到无下一页。
-  - **bandit n/k**：上游维护两个独立 Redis hash（分别存 n、k），同步时各做一次 `HGETALL`，合并写入 Item 对象。整个过程在后台同步线程完成，不上请求路径。
-  - **下游影响**：召回过滤（`check_item`）、context 中的 pool 引用均需按 pool 区分处理。热门索引原来按 `cate_hot` 分区，改为按 tag 分区（`tag_hot_items`），索引构建逻辑从 `item_feature` 迁移到 `item_pool` 同步时完成（因为 tag 信息现在在 pool 里）。Wilson score 排序逻辑保持不变，n=0 的 item 不进入热门索引。
-- **item_feature 完全关闭，相关引用全部迁移**：涉及以下文件，实现时一并处理：
-  - `item_pool.h/cpp`：新 `Item` 结构体（含枚举）+ `ItemPoolData` 双 pool + 热门索引迁入；`build_hot_index()` 随每次 pool load 执行。
-  - `context.h`：去掉 `item_feature` include 和字段；`recent_cates_*` 改名 `recent_tags_*`。
-  - `rec_server.cpp`：去掉 `ctx.item_feature` 赋值。
-  - `fetcher.cpp`：去掉 `item_feature_init()` 调用和 `run_item_feature` 线程；enrichment 循环改为从 `item_pool` 读取 Item 的 `tags`/`authors`。
-  - `recall.cpp`：`global_hot_recall` 改读 `ctx.item_pool->global_hot_items`；`cate_hot_recall` 改读 `ctx.item_pool->tag_hot_items` 和 `ctx.recent_tags_vec`。
-  - `rerank.cpp`：author/cate 查询改从 item_pool 双 pool 中查 Item，取 `authors[0]`/`tags[0]` 作为打散依据。
-  - `filter.cpp`：`check_item` 改为检查 `free_items` 和 `paid_items` 两个 map。
-  - `feature.cpp`：去掉 `ctx.item_feature->features` 查询（LR 特征工程待重设计，当前 bandit 阶段不调用）。
-  - `config.h/cpp`：删除 `data_path.item_feature` 和 `sync.item_feature_interval_ms`。
-- **分区热门索引（cate_hot / tag_hot）**：本期未建。item_pool 现已在 Item 上记录 tag id 列表（`cates`），后续在 item_pool 同步时按 tag 分区构建热门倒排索引（Wilson score 排序，exposure=0 不入），并恢复 recall 的 `cate_hot` 通道（当前函数体与分发表条目均已注释）。**免费池与全量池各建一份**（`g_free_pool` / `g_all_pool` 内各加一个分区热门索引，与现有 `hot_items`/`new_items` 一致）。
-- **日志定时清理（保留期待运维确认）**：当前 `logs/` 下 `<级别>.<YYYYMMDDHH>` 每小时一个文件、只增不删，会无限增长，需加清理保证只留近期日志。两种方案：(A) 外部 cron `find logs -regex '.*/(info|warning|error)\.[0-9]{10}' -mmin +N -delete`（零代码，但每台机需单独配）；(B) `log_init` 起后台线程每小时扫 `logs/`、按文件名小时戳删超期文件（自包含，随二进制走，推荐）。删除依据用**文件名小时戳**而非 mtime。保留期建议做成 config 可配（`log.retention_hours`），默认 72 或 168——24h 偏短（隔天/周末排查会丢日志），**具体保留期待与运维确认后再定并实现**。
+- **分区热门索引（cate_hot / tag_hot）**：本期未建。item_pool 已在 Item 上记录 tag id 列表（`cates`），后续在 item_pool 同步时按 tag 分区构建热门倒排索引（Wilson score 排序，exposure=0 不入），并恢复 recall 的 `cate_hot` 通道（当前函数体与分发表条目均已注释）。**免费池与全量池各建一份**（`g_free_pool` / `g_all_pool` 内各加一个分区热门索引，与现有 `hot_items`/`new_items` 一致）。
+- **时效（新内容）召回通道**：item_pool 已建 `new_items` 索引（created_at 降序），但暂无召回通道读它。后续仿 `global_hot_recall` 加一个新内容召回通道（读 `ctx.item_pool->new_items`）。当前召回只开 `full`（全量喂汤普森，已覆盖 n=0 新内容），故本阶段不需要。
+
+## 上线对接（推荐代码之外，需上游 / 运维配合）
+
+- **反向代理（nginx）**：浏览器直连推荐服务受混合内容 + CORS 限制，需运营配一层 nginx：HTTPS 证书 / TLS 终结 + CORS 白名单（`www`/`test` × `informarket`/`predictionmarkets` 共 4 个 origin）+ 反代到 brpc `:15555`。推荐服务不做 CORS。
 - **生产 redis 写入 exp 配置 key**：`config.prod.conf` 的 `exp.redis_key` 已对齐为 `predictionmarkets:exp_config`，但生产 redis 集群里该 key 尚未写入。上线前需由管 prod 的同学写入（至少一份空配置 `{"base":{},"group_0":{},...,"group_9":{}}`），否则服务起来会走 empty fallback 并刷 "remote exp config empty" warning（功能不受影响）。测试环境已写好。
 - **user_context redis key 加命名空间前缀**：exp key 已用 `predictionmarkets:` 前缀，但 `user_context` 的 `user_black:` / `user_history:` / `user_followed:` / `user_published:` 仍是老名字、无前缀。这些 key 当前未实际使用，等接入用户上下文时一并统一加前缀（config + 上游写入方约定）。
-- **recent_u2i / recent_authors 填充顺序**：`click_list` 为旧→新，`fetcher.cpp` 构建 `recent_authors_vec` 时从前往后（旧→新）遍历，`recent_u2i_prepare` 又取前 `trigger_count` 个，结果取到的是**最旧**的作者，与 "recent" 语义相反。i2i 召回本次已改为从后往前取最近点击（见 `i2i_recall`），recent_u2i 侧应对齐为"取最近作者"（改遍历方向或取尾部）。当前 `recent_u2i` enable=false，不影响线上，不急。
+
+## 零散（不急）
+
+- **recent_u2i / recent_authors 填充顺序**：`click_list` 为旧→新，`fetcher.cpp` 构建 `recent_authors_vec` 时从前往后（旧→新）遍历，`recent_u2i_prepare` 又取前 `trigger_count` 个，结果取到的是**最旧**的作者，与 "recent" 语义相反。i2i 召回本次已改为从后往前取最近点击（见 `i2i_recall`），recent_u2i 侧应对齐为"取最近作者"（改遍历方向或取尾部）。当前 `recent_u2i` enable=false，不影响线上。
 - **多 tag 打散**：rerank 打散当前只用 Item 的 `cates`/`authors` 列表首元素（主 tag/主 author）作键，后续可扩展为多 tag/多作者的打散语义。
-- **时效（新内容）召回通道**：item_pool 已建 `new_items` 索引（created_at 降序），但暂无召回通道读它。后续仿 `global_hot_recall` 加一个新内容召回通道（读 `ctx.item_pool->new_items`），本期未做。当前召回只开 `global_hot`。
-- **按付费状态选池（双池设计）**：**已实现**——item_pool 拆成两个自包含 `ItemPool`（各带 `items`/`hot_items`/`new_items`），两个全局 `g_free_pool`/`g_all_pool` 各自原子发布（两池不要求一致，因每个请求只用其一）。proto 新增 `is_paid_user`；`rec_server` 按付费状态 `ctx.item_pool = is_paid ? g_all_pool : g_free_pool`，下游只认 `ctx.item_pool->items/hot_items/new_items`。**剩余**：上游调用方需实际填充 `is_paid_user`（未填默认 false→免费池）。
-- **召回通道贡献统计（DEBUG log）**：想在 `recall` 分发循环里按通道打贡献统计，但正确指标应为**每通道总召回量**与**独占比**（仅该通道召回、其余通道均无的 item 占比），而非按分发顺序的"增量"（增量受通道先后影响，靠后的通道被低估、不准）。独占比需要每 item 的精确通道来源，但当前 `ctx.channels` 只存通道**分组** bit（hot/i2i/u2i/op，且 `global_hot`/`cate_hot`/`full` 共用 bit 0），粒度不够，需先补 per-channel 来源记录再统计。本次未做。
+- **召回通道贡献统计（DEBUG log）**：想在 `recall` 分发循环里按通道打贡献统计，但正确指标应为**每通道总召回量**与**独占比**（仅该通道召回、其余通道均无的 item 占比），而非按分发顺序的"增量"（增量受通道先后影响，靠后的通道被低估、不准）。独占比需要每 item 的精确通道来源，但当前 `ctx.channels` 只存通道**分组** bit（hot/i2i/u2i/op，且 `global_hot`/`cate_hot`/`full` 共用 bit 0），粒度不够，需先补 per-channel 来源记录再统计。
