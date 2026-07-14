@@ -8,4 +8,4 @@ cmake ..
 
 make -j4
 
-mv ./predictionmarkets_rec ../
+mv ./predictionmarkets_rec ../predictionmarkets-rec
