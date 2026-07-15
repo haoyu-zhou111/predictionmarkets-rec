@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     if (!predictionmarkets_rec::log_init(predictionmarkets_rec::g_config.log.dir,
                                          predictionmarkets_rec::g_config.log.level,
-                                         predictionmarkets_rec::g_config.log.retention_hours)) {
+                                         predictionmarkets_rec::g_config.log.retention_days)) {
         printf("log init failed\n");
         return -1;
     }

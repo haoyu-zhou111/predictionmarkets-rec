@@ -55,7 +55,7 @@ bool config_load(const std::string& conf_path) {
 
         g_config.log.dir                            = get_json(log, "dir", std::string{"./log"});
         g_config.log.level                          = get_json(log, "level", 0);
-        g_config.log.retention_hours                = get_json(log, "retention_hours", 168);
+        g_config.log.retention_days                 = get_json(log, "retention_days", 7);
 
         g_config.sync.item_pool_interval_ms         = get_json(sync, "item_pool_interval_ms", 1000);
         g_config.sync.item_feature_interval_ms      = get_json(sync, "item_feature_interval_ms", 300000);

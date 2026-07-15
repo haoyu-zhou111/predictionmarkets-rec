@@ -41,9 +41,9 @@ struct ModelPathConf {
 };
 
 struct LogConf {
-    std::string dir             = "./log";
-    int         level           = 0;
-    int         retention_hours = 168;   // 日志保留时长（小时），168=7天，<=0 不清理
+    std::string dir            = "./log";
+    int         level          = 0;
+    int         retention_days = 7;   // 日志归档保留天数，<=0 不清理
 };
 
 struct UserContextConf {
