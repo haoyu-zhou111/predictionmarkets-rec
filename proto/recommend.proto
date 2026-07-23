@@ -13,6 +13,7 @@ message RecRequest {
     int32  session_refresh_num = 6;
     int32  topk                = 7;
     bool   is_paid_user        = 8;
+    bool   need_recency_insert = 9;   // 上游判定本次是否做时效强插（首屏出最新）；网页刷新等场景应传 false
 }
 
 message FeedItem {

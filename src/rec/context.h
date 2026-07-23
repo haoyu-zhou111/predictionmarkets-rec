@@ -23,6 +23,7 @@ struct Context {
     std::string                                                 session_id;
     uint32_t                                                    session_refresh_num = 0;
     uint32_t                                                    topk                = 10;
+    bool                                                        need_recency_insert = false;
 
 
     std::shared_ptr<const ItemPool>                             item_pool;   // 按付费状态选中的池（免费/全量）

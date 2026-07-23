@@ -52,6 +52,7 @@ public:
             ctx.session_id          = req->session_id();
             ctx.session_refresh_num = req->session_refresh_num();
             ctx.topk                = req->topk();
+            ctx.need_recency_insert = req->need_recency_insert();
 
             // 付费用户取全量池，免费用户取免费池；下游只认 ctx.item_pool，不再判断付费
             ctx.item_pool       = req->is_paid_user() ? std::atomic_load(&g_all_pool)

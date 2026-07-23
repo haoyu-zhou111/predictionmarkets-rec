@@ -180,11 +180,12 @@ void rerank(Context& ctx) {
         return pen;
     };
 
-    // 首刷强制最新：前 newest_top_k 位按候选发布时间降序占位（运营坑位优先级更高，跳过）。
+    // 时效强插：前 newest_top_k 位按候选发布时间降序占位（运营坑位优先级更高，跳过）。
+    // 是否强插由上游 need_recency_insert 判定（不再靠刷次；网页刷新等场景上游传 false）。
     // 当前全量召回，最新内容必在候选中；全量召回下线后需配套时效性召回，否则可能取不到最新。
     std::unordered_set<size_t> newest_positions;
     std::vector<uint32_t>      by_recency;
-    if (rerank_config.enable && refresh == 0 && rerank_config.newest_top_k > 0) {
+    if (rerank_config.enable && ctx.need_recency_insert && rerank_config.newest_top_k > 0) {
         size_t k = std::min(static_cast<size_t>(rerank_config.newest_top_k), n);
         for (size_t p = 0; p < k; p++) {
             if (op_config.enable && op_positions.count(p)) {
