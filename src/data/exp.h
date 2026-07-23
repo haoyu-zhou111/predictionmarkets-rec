@@ -22,6 +22,7 @@ struct RankConfig {
 
 struct RerankConfig {
     bool     enable         = false;
+    uint32_t newest_top_k   = 0;        // 首刷前 N 位强制按发布时间降序出候选中最新内容（0=不启用）
     int      author_gap     = 0;
     int      cate_gap       = 0;
     uint32_t fresh_top_k    = 0;        // 首屏前 N 位要求 ≤ fresh_days 天（0=不启用）

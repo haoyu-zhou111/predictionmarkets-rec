@@ -48,7 +48,7 @@ void rerank(Context& ctx) {
 
     std::unordered_map<ItemId, std::string> author_map;
     std::unordered_map<ItemId, std::string> cate_map;
-    std::unordered_map<ItemId, uint64_t>    created_map;
+    std::unordered_map<ItemId, uint64_t>    published_map;
     std::unordered_set<std::string>         op_items;
 
     if (op_config.enable) {
@@ -70,7 +70,7 @@ void rerank(Context& ctx) {
         if (!it.authors.empty()) {
             author_map[item] = it.authors.front();
         }
-        created_map[item] = it.created_at;
+        published_map[item] = it.published_at;
     }
 
     size_t n = std::min(static_cast<size_t>(ctx.topk), ctx.candidates.size());
@@ -134,9 +134,9 @@ void rerank(Context& ctx) {
 
         if (rerank_config.enable) {
             // 时效：首屏前 fresh_top_k 位要 ≤fresh_days；前 recent_screens 屏全部 ≤recent_days
-            auto ct = created_map.find(item);
-            uint64_t created_at = ct != created_map.end() ? ct->second : 0;
-            uint64_t age_day = now > created_at ? (now - created_at) / 86400 : 0;
+            auto ct = published_map.find(item);
+            uint64_t published_at = ct != published_map.end() ? ct->second : 0;
+            uint64_t age_day = now > published_at ? (now - published_at) / 86400 : 0;
             bool rec_bad = false;
             if (refresh < static_cast<uint32_t>(rerank_config.recent_screens) &&
                 age_day > static_cast<uint64_t>(rerank_config.recent_days)) {
@@ -180,20 +180,61 @@ void rerank(Context& ctx) {
         return pen;
     };
 
-    for (size_t i = 0; i < n; i++) {
-        // 选 penalty 最小、同 penalty 分数最高（order 已按分数降序）的未用候选
-        int chosen = -1;
-        uint32_t best_pen = std::numeric_limits<uint32_t>::max();
-        for (auto j : order) {
-            if (used.count(j)) {
-                continue;
+    // 首刷强制最新：前 newest_top_k 位按候选发布时间降序占位（运营坑位优先级更高，跳过）。
+    // 当前全量召回，最新内容必在候选中；全量召回下线后需配套时效性召回，否则可能取不到最新。
+    std::unordered_set<size_t> newest_positions;
+    std::vector<uint32_t>      by_recency;
+    if (rerank_config.enable && refresh == 0 && rerank_config.newest_top_k > 0) {
+        size_t k = std::min(static_cast<size_t>(rerank_config.newest_top_k), n);
+        for (size_t p = 0; p < k; p++) {
+            if (op_config.enable && op_positions.count(p)) {
+                continue;   // 运营坑位优先级更高，不被最新覆盖
             }
-            uint32_t pen = penalty_of(j, i);
-            if (pen < best_pen) {
-                best_pen = pen;
-                chosen = j;
-                if (pen == 0) {
-                    break;   // 已最优，提前结束
+            newest_positions.insert(p);
+        }
+        if (!newest_positions.empty()) {
+            by_recency = order;   // 拷贝候选下标，改按发布时间降序
+            std::sort(by_recency.begin(), by_recency.end(), [&](const uint32_t& a, const uint32_t& b) {
+                auto ia = published_map.find(ctx.candidates[a]);
+                auto ib = published_map.find(ctx.candidates[b]);
+                uint64_t pa = ia != published_map.end() ? ia->second : 0;
+                uint64_t pb = ib != published_map.end() ? ib->second : 0;
+                return pa > pb;
+            });
+        }
+    }
+    size_t recency_cursor = 0;
+
+    for (size_t i = 0; i < n; i++) {
+        int chosen = -1;
+        uint32_t best_pen = 0;
+        bool forced = false;
+
+        // 强制最新位：取下一个未用、按发布时间降序的候选（候选不足则落到常规贪心兜底）
+        if (newest_positions.count(i)) {
+            while (recency_cursor < by_recency.size() && used.count(by_recency[recency_cursor])) {
+                recency_cursor++;
+            }
+            if (recency_cursor < by_recency.size()) {
+                chosen = by_recency[recency_cursor++];
+                forced = true;
+            }
+        }
+
+        // 常规软降权贪心：选 penalty 最小、同 penalty 分数最高（order 已按分数降序）的未用候选
+        if (chosen == -1) {
+            best_pen = std::numeric_limits<uint32_t>::max();
+            for (auto j : order) {
+                if (used.count(j)) {
+                    continue;
+                }
+                uint32_t pen = penalty_of(j, i);
+                if (pen < best_pen) {
+                    best_pen = pen;
+                    chosen = j;
+                    if (pen == 0) {
+                        break;   // 已最优，提前结束
+                    }
                 }
             }
         }
@@ -204,9 +245,9 @@ void rerank(Context& ctx) {
         }
 
         ItemId& chosen_item = ctx.candidates[chosen];
-        ALOG(DEBUG, "[rerank] pos=%zu item=%s score=%.4f penalty=0x%x rules=%s",
+        ALOG(DEBUG, "[rerank] pos=%zu item=%s score=%.4f penalty=0x%x rules=%s forced=%d",
              i, chosen_item.c_str(), ctx.rank_scores[chosen], best_pen,
-             penalty_rules(best_pen).c_str());
+             penalty_rules(best_pen).c_str(), forced);
         if (rerank_config.enable) {
             if (rerank_config.author_gap > 0) {
                 auto author_iter = author_map.find(chosen_item);

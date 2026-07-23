@@ -121,8 +121,8 @@ void parse_posts(const json& posts, ItemPool& all, ItemPool& free) {
         item.title      = post.value("title", std::string{});
         item.slug       = post.value("slug", std::string{});
         item.visibility = parse_visibility(post.value("visibility", std::string{}));
-        item.created_at = iso8601_to_epoch(post.value("created_at", std::string{}));
-        item.updated_at = iso8601_to_epoch(post.value("updated_at", std::string{}));
+        item.published_at = iso8601_to_epoch(post.value("published_at", std::string{}));
+        item.updated_at   = iso8601_to_epoch(post.value("updated_at", std::string{}));
 
         // include=tags,authors 带回的关系数组，仅记录 id
         const auto tags_iter = post.find("tags");
@@ -153,7 +153,7 @@ void fetch_ghost_posts(ItemPool& all, ItemPool& free) {
     std::string jwt = make_ghost_jwt();
     const std::string base = g_config.sync.ghost.admin_api_url + "/posts/"
         "?filter=status:published"
-        "&fields=id,title,slug,visibility,created_at,updated_at"
+        "&fields=id,title,slug,visibility,published_at,updated_at"
         "&include=tags,authors"
         "&limit=" + std::to_string(g_config.sync.ghost.page_limit);
 
@@ -186,6 +186,15 @@ void fetch_ghost_posts(ItemPool& all, ItemPool& free) {
         if (next <= 0) break;
         page = static_cast<int>(next);
     }
+
+    // 诊断：确认拉取内容是否都带 published_at（缺失会 published_at==0，影响新内容排序）
+    size_t missing = 0;
+    for (const auto& [id, item] : all.items) {
+        if (item.published_at == 0) {
+            missing++;
+        }
+    }
+    ALOG(DEBUG, "[item_pool] fetched posts=%zu missing_published_at=%zu", all.items.size(), missing);
 }
 
 // bandit 曝光/点击：每个 item 一个 hash（key = prefix + item_id），
@@ -264,12 +273,12 @@ void fill_bandit_stats(ItemPool& all, ItemPool& free) {
 //     return res;
 // }
 
-// 新内容索引：按 created_at 降序
+// 新内容索引：按 published_at 降序
 std::vector<ItemId> build_new_index(const std::unordered_map<ItemId, Item>& items) {
     std::vector<std::pair<ItemId, uint64_t>> scored;
     scored.reserve(items.size());
     for (const auto& [id, item] : items) {
-        scored.emplace_back(id, item.created_at);
+        scored.emplace_back(id, item.published_at);
     }
     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
         return a.second > b.second;

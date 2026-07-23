@@ -22,18 +22,18 @@ struct Item {
     std::string          slug;
     std::vector<CateId>  cates;                      // tag id 列表
     std::vector<UserId>  authors;                    // author id 列表
-    ItemVisibility       visibility  = ItemVisibility::UNKNOWN;
-    uint64_t             created_at  = 0;             // Unix 秒戳
-    uint64_t             updated_at  = 0;             // Unix 秒戳
-    uint64_t             exposure    = 0;             // 曝光数（bandit 的 n）
-    uint64_t             click       = 0;             // 点击数（bandit 的 k）
+    ItemVisibility       visibility   = ItemVisibility::UNKNOWN;
+    uint64_t             published_at = 0;            // Unix 秒戳（Ghost 发布时间）
+    uint64_t             updated_at   = 0;            // Unix 秒戳
+    uint64_t             exposure     = 0;            // 曝光数（bandit 的 n）
+    uint64_t             click        = 0;            // 点击数（bandit 的 k）
 };
 
 // 自包含的一个池：items + 该池自己的热门/新内容索引
 struct ItemPool {
     std::unordered_map<ItemId, Item> items;             // 池内全部 item
     std::vector<ItemId>              hot_items;          // 热门：items 按 Wilson score 降序，exposure=0 不入
-    std::vector<ItemId>              new_items;          // 新内容：items 按 created_at 降序
+    std::vector<ItemId>              new_items;          // 新内容：items 按 published_at 降序
 };
 
 // 免费池（visibility != PAID）与全量池，各自独立发布；每个请求按付费状态取其一。

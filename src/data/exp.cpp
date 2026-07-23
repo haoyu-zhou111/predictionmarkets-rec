@@ -63,6 +63,7 @@ void parse_config(const json& config_json, ExpConfig& exp_config) {
     auto& rerank_config = get_json_obj(config_json, "rerank");
     try {
         exp_config.rerank.enable = get_json(rerank_config, "enable", false);
+        exp_config.rerank.newest_top_k = get_json(rerank_config, "newest_top_k", 0u);
         exp_config.rerank.author_gap = get_json(rerank_config, "author_gap", 0);
         exp_config.rerank.cate_gap = get_json(rerank_config, "cate_gap", 0);
         exp_config.rerank.fresh_top_k = get_json(rerank_config, "fresh_top_k", 0u);
