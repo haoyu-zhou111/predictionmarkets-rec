@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <ctime>
 #include <stdexcept>
-#include <strings.h>                                       // strncasecmp
 #include <string>
 #include <thread>
 #include <utility>
@@ -79,27 +78,6 @@ size_t write_callback(void* contents, size_t size, size_t nmemb, std::string* bu
     return len;
 }
 
-// 抓响应里的 Location 头（大小写不敏感），供诊断非 200 响应（如重定向）时定位跳转目标
-size_t header_callback(char* buffer, size_t size, size_t nitems, std::string* location) {
-    size_t len = size * nitems;
-    const size_t klen = 9;                                // "location:"
-    if (len >= klen && strncasecmp(buffer, "location:", klen) == 0) {
-        const char* p = buffer + klen;
-        size_t vlen = len - klen;
-        while (vlen > 0 && (*p == ' ' || *p == '\t')) { p++; vlen--; }
-        while (vlen > 0 && (p[vlen - 1] == '\r' || p[vlen - 1] == '\n' ||
-                            p[vlen - 1] == ' '  || p[vlen - 1] == '\t')) {
-            vlen--;
-        }
-        try {
-            location->assign(p, vlen);
-        } catch (...) {
-            return 0;
-        }
-    }
-    return len;
-}
-
 bool curl_init() {
     g_curl = curl_easy_init();
     if (!g_curl) return false;
@@ -114,11 +92,8 @@ bool curl_init() {
 
 std::string http_get(const std::string& url, const std::string& jwt) {
     std::string response;
-    std::string location;
-    curl_easy_setopt(g_curl, CURLOPT_URL,            url.c_str());
-    curl_easy_setopt(g_curl, CURLOPT_WRITEDATA,      &response);
-    curl_easy_setopt(g_curl, CURLOPT_HEADERFUNCTION, header_callback);
-    curl_easy_setopt(g_curl, CURLOPT_HEADERDATA,     &location);
+    curl_easy_setopt(g_curl, CURLOPT_URL,       url.c_str());
+    curl_easy_setopt(g_curl, CURLOPT_WRITEDATA, &response);
 
     struct curl_slist* headers = nullptr;
     std::string auth = "Authorization: Ghost " + jwt;
@@ -140,21 +115,19 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     long status = 0;
     curl_easy_getinfo(g_curl, CURLINFO_RESPONSE_CODE, &status);
 
-    curl_easy_setopt(g_curl, CURLOPT_HTTPHEADER,     nullptr);
-    curl_easy_setopt(g_curl, CURLOPT_HEADERFUNCTION, nullptr);
-    curl_easy_setopt(g_curl, CURLOPT_HEADERDATA,     nullptr);
+    curl_easy_setopt(g_curl, CURLOPT_HTTPHEADER, nullptr);
     curl_slist_free_all(headers);
 
     if (res != CURLE_OK) {
         throw std::runtime_error(curl_easy_strerror(res));
     }
 
-    // 诊断：非 200 时打状态码、Location、body 前 200 字符，定位重定向/鉴权等问题。
-    // 内网直连 ghost 若被强制 https 重定向，status 为 30x、location 指向公网域名，
-    // body 是 "Moved Permanently…" 之类文本 —— 此时应由运维在 ghost 侧关闭对内网请求的强制跳转。
+    // 诊断：非 200 时打状态码 + body 前 200 字符，定位重定向/鉴权等问题（200 路径零开销）。
+    // 内网直连 ghost 若被强制 https 重定向，status 为 30x、body 形如
+    // "Moved Permanently. Redirecting to https://<公网域名>…"，重定向目标即在 body 中。
     if (status != 200) {
-        ALOG(WARNING, "[item_pool] ghost http_get non-200: status=%ld location=%s body_prefix=%.200s url=%s",
-             status, location.empty() ? "(none)" : location.c_str(), response.c_str(), url.c_str());
+        ALOG(WARNING, "[item_pool] ghost http_get non-200: status=%ld body_prefix=%.200s url=%s",
+             status, response.c_str(), url.c_str());
     }
 
     return response;
