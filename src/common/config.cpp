@@ -71,6 +71,7 @@ bool config_load(const std::string& conf_path) {
         g_config.rec_history.max_len                = get_json(rec_history, "max_len", 200);
 
         g_config.sync.ghost.admin_api_url           = get_json(ghost, "admin_api_url", std::string{""});
+        g_config.sync.ghost.public_host             = get_json(ghost, "public_host", std::string{""});
         g_config.sync.ghost.admin_key               = get_json(ghost, "admin_key", std::string{""});
         g_config.sync.ghost.page_limit              = get_json(ghost, "page_limit", 100);
         g_config.sync.ghost.jwt_ttl_sec             = get_json(ghost, "jwt_ttl_sec", 300);

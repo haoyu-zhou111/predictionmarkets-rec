@@ -124,6 +124,15 @@ std::string http_get(const std::string& url, const std::string& jwt) {
     std::string auth = "Authorization: Ghost " + jwt;
     headers = curl_slist_append(headers, auth.c_str());
     headers = curl_slist_append(headers, "Accept-Version: v5.0");
+    // 内网直连 ghost（public_host 非空）时，伪装成来自规范域名的 https 请求，
+    // 避免被 301 到公网。仅改 HTTP 头，TCP 仍连 URL 里的内网地址，不产生公网流量。
+    // 开发机走公网 URL、public_host 为空，不注入这两个头，行为不变。
+    std::string host_hdr;
+    if (!g_config.sync.ghost.public_host.empty()) {
+        host_hdr = "Host: " + g_config.sync.ghost.public_host;
+        headers = curl_slist_append(headers, host_hdr.c_str());
+        headers = curl_slist_append(headers, "X-Forwarded-Proto: https");
+    }
     curl_easy_setopt(g_curl, CURLOPT_HTTPHEADER, headers);
 
     CURLcode res = curl_easy_perform(g_curl);

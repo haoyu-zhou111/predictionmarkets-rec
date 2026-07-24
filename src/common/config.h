@@ -61,6 +61,7 @@ struct RecHistoryConf {
 
 struct GhostConf {
     std::string admin_api_url;                          // 形如 https://host/ghost/api/admin
+    std::string public_host;                            // ghost 规范域名；内网直连时作 Host 头，配合 X-Forwarded-Proto 避免被 301 到公网
     std::string admin_key;                              // Admin API Key："id:secret"
     int         page_limit  = 100;                      // 分页每页条数
     int         jwt_ttl_sec = 300;                      // JWT 有效期（秒）
